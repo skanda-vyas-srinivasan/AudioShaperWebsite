@@ -154,19 +154,24 @@ export default function App() {
 
                 {/* Video Display */}
                 <div className="aspect-video w-full rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] relative overflow-hidden shadow-[0_0_40px_rgba(114,9,183,0.2)]">
-                    <AnimatePresence mode="wait">
+                    <AnimatePresence>
                         <motion.video
                             ref={activeVideoRef}
                             key={activeVideo.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
                             src={activeVideo.src}
                             autoPlay
                             muted
                             loop
                             playsInline
-                            className="w-full h-full object-cover"
+                            preload="auto"
+                            onLoadedData={(e) => {
+                                e.currentTarget.playbackRate = 1.5;
+                            }}
+                            className="absolute inset-0 w-full h-full object-cover"
                         />
                     </AnimatePresence>
                 </div>

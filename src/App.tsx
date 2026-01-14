@@ -69,7 +69,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="text-5xl md:text-6xl font-black tracking-tight text-[#FF006E]"
             style={{ textShadow: '0 0 20px rgba(255, 0, 110, 0.6)' }}>
-            SoundChain
+            SoundGrid
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -122,7 +122,7 @@ export default function App() {
                     Feature Showcase
                 </h2>
                 <p className="text-[#B8B8D1] max-w-2xl mx-auto">
-                    Explore the different modes of SoundChain, from simple automatic chains to complex manual routing.
+                    Explore the different modes of SoundGrid, from simple automatic chains to complex manual routing.
                 </p>
             </div>
 
@@ -183,7 +183,7 @@ export default function App() {
             <div className="max-w-3xl mx-auto text-center">
                  <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
                     <Download className="text-[#00F5FF]" /> 
-                    Get SoundChain
+                    Get SoundGrid
                 </h2>
                 <p className="text-[#B8B8D1] mb-12">
                     Requires macOS 13.0+ and BlackHole 2ch.

@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, Play, Monitor, Zap, Layout, Settings, Repeat, Layers } from 'lucide-react';
+import { BackgroundAnimation } from './components/BackgroundAnimation';
 
 const FEATURE_VIDEOS = [
   {
@@ -37,24 +38,26 @@ export default function App() {
   const videoRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
   const [activeVideo, setActiveVideo] = useState(FEATURE_VIDEOS[0]);
+  const activeVideoRef = useRef<HTMLVideoElement>(null);
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Speed up videos
+  React.useEffect(() => {
+    if (activeVideoRef.current) {
+      activeVideoRef.current.playbackRate = 1.5;
+    }
+  }, [activeVideo]);
+
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
       
+      <BackgroundAnimation />
+
       {/* 1. APP HOME REPLICA (Hero) */}
       <section className="relative h-screen flex flex-col items-center justify-between py-12">
-        
-        {/* Scanlines Overlay */}
-        <div className="fixed inset-0 pointer-events-none z-0 opacity-[0.15]" 
-             style={{
-               background: 'linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2))',
-               backgroundSize: '100% 4px'
-             }} 
-        />
         
         {/* Top Spacer */}
         <div className="flex-1" />
@@ -66,7 +69,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="text-5xl md:text-6xl font-black tracking-tight text-[#FF006E]"
             style={{ textShadow: '0 0 20px rgba(255, 0, 110, 0.6)' }}>
-            AudioShaper
+            SoundChain
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -109,7 +112,7 @@ export default function App() {
 
 
       {/* 2. SCROLL CONTENT */}
-      <div className="relative z-10 bg-[#0A0A0F] border-t border-[#1F1F3D]">
+      <div className="relative z-10 border-t border-[#1F1F3D]">
         
         {/* Video Section - FEATURE SHOWCASE */}
         <div ref={videoRef} className="py-24 px-6 max-w-6xl mx-auto">
@@ -119,7 +122,7 @@ export default function App() {
                     Feature Showcase
                 </h2>
                 <p className="text-[#B8B8D1] max-w-2xl mx-auto">
-                    Explore the different modes of AudioShaper, from simple automatic chains to complex manual routing.
+                    Explore the different modes of SoundChain, from simple automatic chains to complex manual routing.
                 </p>
             </div>
 
@@ -153,6 +156,7 @@ export default function App() {
                 <div className="aspect-video w-full rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] relative overflow-hidden shadow-[0_0_40px_rgba(114,9,183,0.2)]">
                     <AnimatePresence mode="wait">
                         <motion.video
+                            ref={activeVideoRef}
                             key={activeVideo.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -174,7 +178,7 @@ export default function App() {
             <div className="max-w-3xl mx-auto text-center">
                  <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
                     <Download className="text-[#00F5FF]" /> 
-                    Get AudioShaper
+                    Get SoundChain
                 </h2>
                 <p className="text-[#B8B8D1] mb-12">
                     Requires macOS 13.0+ and BlackHole 2ch.
@@ -209,36 +213,38 @@ export default function App() {
   );
 }
 
-// Replicating the "NeonActionButton" from SwiftUI
 function NeonActionButton({ icon, title, subtitle, accentColor, onClick }: any) {
   return (
     <motion.button
-      whileHover={{ scale: 1.03 }}
+      whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="relative group w-[280px] h-[160px] rounded-2xl bg-[#2D1B4E] flex flex-col items-center justify-center gap-2 transition-all"
+      className="group relative w-72 h-44 rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] flex flex-col items-center justify-center gap-3 transition-all duration-300"
       style={{
-        boxShadow: `0 8px 30px -10px rgba(0,0,0,0.5)`,
+        boxShadow: '0 4px 20px -5px rgba(0,0,0,0.5)'
       }}
     >
-      <div className="absolute inset-0 rounded-2xl border-2 transition-all duration-300"
-           style={{ borderColor: `${accentColor}40` }} 
-      />
-      
-      <div className="absolute inset-0 rounded-2xl border-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-           style={{ 
-               borderColor: accentColor,
-               boxShadow: `0 0 20px ${accentColor}40`
-           }}
+      {/* Hover Glow & Border - strictly matching the 'Active' state styling of tabs */}
+      <div 
+        className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        style={{
+          boxShadow: `0 0 25px ${accentColor}30`,
+          border: `1px solid ${accentColor}`
+        }}
       />
 
-      <div className="relative z-10 flex flex-col items-center gap-3">
-        {icon}
-        <div className="text-lg font-bold text-white tracking-wide font-sans">
-            {title.toUpperCase()}
+      {/* Icon */}
+      <div className="relative z-10 text-[#B8B8D1] group-hover:text-white transition-colors duration-300 transform group-hover:scale-110">
+        {React.cloneElement(icon, { size: 40, strokeWidth: 1.5 })}
+      </div>
+
+      {/* Text Content */}
+      <div className="relative z-10 flex flex-col items-center gap-1">
+        <div className="text-lg font-bold text-white tracking-wide group-hover:text-white transition-colors">
+          {title}
         </div>
-        <div className="text-xs font-medium text-[#6E6E8F] tracking-wide">
-            {subtitle}
+        <div className="text-xs font-medium text-[#6E6E8F] group-hover:text-[#B8B8D1] transition-colors">
+          {subtitle}
         </div>
       </div>
     </motion.button>

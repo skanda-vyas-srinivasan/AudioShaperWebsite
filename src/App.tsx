@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'framer-motion';
 import {
   Download, Play, Monitor, Zap, Settings, Repeat, Layers, Github,
   Volume2, Sparkles, Building2, Activity, ArrowLeftRight, Rabbit,
@@ -82,11 +82,15 @@ const EFFECTS = [
 ];
 
 export default function App() {
+  const heroRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const effectsWrapRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
   const [activeVideo, setActiveVideo] = useState(FEATURE_VIDEOS[0]);
   const activeVideoRef = useRef<HTMLVideoElement>(null);
+  const heroInView = useInView(heroRef, { amount: 0.6 });
+  const heroWasInView = useRef(false);
+  const [resetKey, setResetKey] = useState(0);
 
   const { scrollYProgress: effectsProgress } = useScroll({
     target: effectsWrapRef,
@@ -109,6 +113,13 @@ export default function App() {
     }
   }, [activeVideo]);
 
+  useEffect(() => {
+    if (heroInView && !heroWasInView.current) {
+      setResetKey((prev) => prev + 1);
+    }
+    heroWasInView.current = heroInView;
+  }, [heroInView]);
+
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
       <NavHeader
@@ -124,7 +135,7 @@ export default function App() {
       />
 
       {/* 1. APP HOME REPLICA (Hero) */}
-      <section className="relative h-screen flex flex-col items-center justify-between py-12">
+      <section ref={heroRef} className="relative h-screen flex flex-col items-center justify-between py-12">
         
         {/* Top Spacer */}
         <div className="flex-1" />
@@ -206,6 +217,7 @@ export default function App() {
           viewport={{ once: true, margin: "-100px" }}
           variants={staggerContainer}
           className="relative scroll-mt-24 py-32 px-6"
+          key={`feature-${resetKey}`}
         >
           {/* Background handled by global animation for a seamless transition from hero */}
           <div className="relative z-10 max-w-6xl mx-auto">
@@ -274,7 +286,7 @@ export default function App() {
 
         {/* Effects Carousel Section */}
         <div ref={effectsWrapRef} className="relative z-10">
-          <EffectsCarousel />
+          <EffectsCarousel key={`effects-${resetKey}`} />
         </div>
 
         {/* Download Section */}
@@ -285,6 +297,7 @@ export default function App() {
           viewport={{ once: true, margin: "-100px" }}
           variants={staggerContainer}
           className="relative scroll-mt-24 py-32 px-6"
+          key={`download-${resetKey}`}
         >
           <motion.div variants={fadeInUp} className="relative z-10 max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
@@ -335,6 +348,7 @@ export default function App() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
           className="py-12 px-6 bg-gradient-to-b from-transparent to-[#08080C]"
+          key={`footer-${resetKey}`}
         >
           <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#6E6E8F] text-sm md:flex-row md:items-center md:justify-between">
             <div>© 2025 Kairos. Built for audio enthusiasts.</div>

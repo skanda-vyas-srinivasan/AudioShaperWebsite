@@ -1,7 +1,32 @@
-import React, { useRef, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Download, Play, Monitor, Zap, Layout, Settings, Repeat, Layers } from 'lucide-react';
+import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import {
+  Download, Play, Monitor, Zap, Settings, Repeat, Layers, Github,
+  Volume2, Sparkles, Building2, Activity, ArrowLeftRight, Rabbit,
+  Music2, SlidersHorizontal, Grid3X3, Timer, RefreshCw,
+  AudioWaveform, CircleDot, Circle, Disc, TriangleRight
+} from 'lucide-react';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
+import { NavHeader } from './components/NavHeader';
+
+// Scroll-triggered animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] }
+  }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+};
+
 
 const FEATURE_VIDEOS = [
   {
@@ -34,11 +59,44 @@ const FEATURE_VIDEOS = [
   }
 ];
 
+// All 18 effects from AudioShaper - exact names and descriptions
+const EFFECTS = [
+  { name: 'Bass Boost', description: 'Makes low frequencies more powerful', icon: Volume2 },
+  { name: 'Clarity', description: 'Makes voices and instruments clearer', icon: Sparkles },
+  { name: 'Reverb', description: 'Adds space and depth', icon: Building2 },
+  { name: 'Soft Compression', description: 'Evens out quiet and loud parts', icon: Activity },
+  { name: 'Stereo Widening', description: 'Makes sound feel wider and more spacious', icon: ArrowLeftRight },
+  { name: 'Pitch', description: 'High-quality pitch shift', icon: Music2 },
+  { name: 'Simple EQ', description: 'Adjust bass, middle, and treble', icon: SlidersHorizontal },
+  { name: '10-Band EQ', description: 'Fine-tune 10 frequency bands', icon: SlidersHorizontal },
+  { name: 'De-Mud', description: 'Removes muddiness and boxiness', icon: Zap },
+  { name: 'Delay', description: 'Repeating echoes and rhythmic delays', icon: RefreshCw },
+  { name: 'Distortion', description: 'Adds warmth, grit, and harmonic saturation', icon: AudioWaveform },
+  { name: 'Tremolo', description: 'Pulsing volume modulation', icon: AudioWaveform },
+  { name: 'Chorus', description: 'Thickens sound with lush modulation', icon: CircleDot },
+  { name: 'Phaser', description: 'Swirling, sweeping movement', icon: Circle },
+  { name: 'Flanger', description: 'Jet-like sweeping comb filter', icon: AudioWaveform },
+  { name: 'Bitcrusher', description: 'Retro digital grit and crunch', icon: Grid3X3 },
+  { name: 'Tape Saturation', description: 'Warm, smooth analog saturation', icon: Disc },
+  { name: 'Resampling', description: 'Pitch and speed shift by resampling', icon: RefreshCw },
+];
+
 export default function App() {
   const videoRef = useRef<HTMLDivElement>(null);
+  const effectsWrapRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
   const [activeVideo, setActiveVideo] = useState(FEATURE_VIDEOS[0]);
   const activeVideoRef = useRef<HTMLVideoElement>(null);
+
+  const { scrollYProgress: effectsProgress } = useScroll({
+    target: effectsWrapRef,
+    offset: ["start end", "end start"]
+  });
+  const effectsBlackOpacity = useTransform(
+    effectsProgress,
+    [0, 0.3, 0.7, 1],
+    [0, 1, 1, 0]
+  );
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,8 +111,17 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
+      <NavHeader
+        onFeatures={() => scrollTo(videoRef)}
+        onDemo={() => scrollTo(videoRef)}
+        onDownload={() => scrollTo(downloadRef)}
+      />
       
       <BackgroundAnimation />
+      <motion.div
+        className="fixed inset-0 z-[1] pointer-events-none bg-black"
+        style={{ opacity: effectsBlackOpacity }}
+      />
 
       {/* 1. APP HOME REPLICA (Hero) */}
       <section className="relative h-screen flex flex-col items-center justify-between py-12">
@@ -101,6 +168,23 @@ export default function App() {
         
         </div>
 
+        {/* What It Does */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="relative z-10 mt-12 px-6 max-w-3xl text-center"
+        >
+          <div className="text-xs font-semibold tracking-[0.3em] text-[#6E6E8F] uppercase mb-4">
+            What It Does
+          </div>
+          <p className="text-sm md:text-base text-[#B8B8D1]">
+            AudioShaper is a Mac app for real‑time, system‑wide audio shaping. Build custom effect
+            chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
+            stable, low‑latency routing.
+          </p>
+        </motion.div>
+
         {/* Bottom Spacer */}
         <div className="flex-1" />
 
@@ -111,107 +195,160 @@ export default function App() {
       </section>
 
 
-      {/* 2. SCROLL CONTENT */}
-      <div className="relative z-10 border-t border-[#1F1F3D]">
-        
+      {/* 2. SCROLL CONTENT - Clean, minimal */}
+      <div className="relative z-10">
+
         {/* Video Section - FEATURE SHOWCASE */}
-        <div ref={videoRef} className="py-24 px-6 max-w-6xl mx-auto">
-            <div className="text-center mb-16">
-                <h2 className="text-3xl font-black text-white mb-4 flex items-center justify-center gap-3">
-                    <Monitor className="text-[#FF006E]" /> 
-                    Feature Showcase
-                </h2>
-                <p className="text-[#B8B8D1] max-w-2xl mx-auto">
-                    Explore the different modes of Kairos, from simple automatic chains to complex manual routing.
-                </p>
-            </div>
+        <motion.section
+          ref={videoRef}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={staggerContainer}
+          className="relative scroll-mt-24 py-32 px-6"
+        >
+          {/* Background handled by global animation for a seamless transition from hero */}
+          <div className="relative z-10 max-w-6xl mx-auto">
+            <motion.div variants={fadeInUp} className="text-center mb-16">
+              <h2 className="text-3xl font-black text-white mb-4">
+                Feature Showcase
+              </h2>
+              <p className="text-[#B8B8D1] max-w-2xl mx-auto">
+                Explore the different modes of Kairos, from simple automatic chains to complex manual routing.
+              </p>
+            </motion.div>
 
-            <div className="grid lg:grid-cols-[300px_1fr] gap-8 items-start">
-                {/* Video Navigation Tabs */}
-                <div className="flex flex-col gap-3">
-                    {FEATURE_VIDEOS.map((video) => (
-                        <button
-                            key={video.id}
-                            onClick={() => setActiveVideo(video)}
-                            className={`flex flex-col items-start p-4 rounded-xl border transition-all text-left ${
-                                activeVideo.id === video.id 
-                                ? 'bg-[#1A0B2E] border-[#FF006E] shadow-[0_0_15px_rgba(255,0,110,0.2)]' 
-                                : 'bg-[#0F0F16] border-[#1F1F3D] hover:border-[#B8B8D1]/30'
-                            }`}
-                        >
-                            <div className={`flex items-center gap-3 font-bold text-sm uppercase tracking-wider mb-1 ${
-                                activeVideo.id === video.id ? 'text-[#FF006E]' : 'text-[#B8B8D1]'
-                            }`}>
-                                {video.icon}
-                                {video.title}
-                            </div>
-                            <div className="text-xs text-[#6E6E8F] leading-relaxed">
-                                {video.desc}
-                            </div>
-                        </button>
-                    ))}
-                </div>
+            <motion.div variants={fadeInUp} className="grid lg:grid-cols-[300px_1fr] gap-8 items-start">
+              {/* Video Navigation Tabs */}
+              <div className="flex flex-col gap-3">
+                {FEATURE_VIDEOS.map((video) => (
+                  <motion.button
+                    key={video.id}
+                    variants={fadeInUp}
+                    onClick={() => setActiveVideo(video)}
+                    className={`flex flex-col items-start p-4 rounded-xl border transition-all text-left ${
+                      activeVideo.id === video.id
+                        ? 'bg-[#1A0B2E] border-[#FF006E] shadow-[0_0_15px_rgba(255,0,110,0.2)]'
+                        : 'bg-[#0F0F16]/80 border-[#1F1F3D] hover:border-[#B8B8D1]/30'
+                    }`}
+                  >
+                    <div className={`flex items-center gap-3 font-bold text-sm uppercase tracking-wider mb-1 ${
+                      activeVideo.id === video.id ? 'text-[#FF006E]' : 'text-[#B8B8D1]'
+                    }`}>
+                      {video.icon}
+                      {video.title}
+                    </div>
+                    <div className="text-xs text-[#6E6E8F] leading-relaxed">
+                      {video.desc}
+                    </div>
+                  </motion.button>
+                ))}
+              </div>
 
-                {/* Video Display */}
-                <div className="aspect-video w-full rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] relative overflow-hidden shadow-[0_0_40px_rgba(114,9,183,0.2)]">
-                    <AnimatePresence>
-                        <motion.video
-                            ref={activeVideoRef}
-                            key={activeVideo.id}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            src={activeVideo.src}
-                            autoPlay
-                            muted
-                            loop
-                            playsInline
-                            preload="auto"
-                            onLoadedData={(e) => {
-                                e.currentTarget.playbackRate = 1.5;
-                            }}
-                            className="absolute inset-0 w-full h-full object-cover"
-                        />
-                    </AnimatePresence>
-                </div>
-            </div>
+              {/* Video Display */}
+              <div className="aspect-video w-full rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] relative overflow-hidden shadow-[0_0_60px_rgba(114,9,183,0.15)]">
+                <AnimatePresence mode="wait">
+                  <motion.video
+                    ref={activeVideoRef}
+                    key={activeVideo.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    src={activeVideo.src}
+                    autoPlay
+                    muted
+                    loop
+                    playsInline
+                    preload="auto"
+                    onLoadedData={(e) => {
+                      e.currentTarget.playbackRate = 1.5;
+                    }}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </div>
+        </motion.section>
+
+        {/* Effects Carousel Section */}
+        <div ref={effectsWrapRef} className="relative z-10">
+          <EffectsCarousel />
         </div>
 
         {/* Download Section */}
-        <div ref={downloadRef} className="py-24 px-6 bg-[#0F0F16] border-t border-[#1F1F3D]">
-            <div className="max-w-3xl mx-auto text-center">
-                 <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
-                    <Download className="text-[#00F5FF]" /> 
-                    Get Kairos
-                </h2>
-                <p className="text-[#B8B8D1] mb-12">
-                    Requires macOS 13.0+ and BlackHole 2ch.
-                </p>
+        <motion.section
+          ref={downloadRef}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={staggerContainer}
+          className="relative scroll-mt-24 py-32 px-6"
+        >
+          <motion.div variants={fadeInUp} className="relative z-10 max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
+              <Download className="text-[#00F5FF]" />
+              Get Kairos
+            </h2>
+            <p className="text-[#B8B8D1] mb-12">
+              Requires macOS 13.0+ and BlackHole 2ch.
+            </p>
 
-                <div className="grid gap-4">
-                    <a href="#" className="group relative block w-full p-6 rounded-2xl bg-[#1A0B2E] border border-[#00F5FF]/30 hover:border-[#00F5FF] transition-all hover:shadow-[0_0_30px_rgba(0,245,255,0.15)]">
-                        <div className="flex items-center justify-between">
-                            <div className="text-left">
-                                <div className="text-xl font-bold text-white group-hover:text-[#00F5FF] transition-colors">Download .pkg Installer</div>
-                                <div className="text-sm text-[#6E6E8F] mt-1">Version 1.0.0 • Universal (Intel/Apple Silicon)</div>
-                            </div>
-                            <Download className="w-6 h-6 text-[#00F5FF]" />
-                        </div>
-                    </a>
-
-                    <a href="https://github.com/ExistentialAudio/BlackHole/releases" target="_blank" className="group relative block w-full p-6 rounded-2xl bg-[#1A0B2E] border border-[#FF006E]/30 hover:border-[#FF006E] transition-all hover:shadow-[0_0_30px_rgba(255,0,110,0.15)]">
-                         <div className="flex items-center justify-between">
-                            <div className="text-left">
-                                <div className="text-xl font-bold text-white group-hover:text-[#FF006E] transition-colors">Get BlackHole Driver</div>
-                                <div className="text-sm text-[#6E6E8F] mt-1">Required for system audio routing</div>
-                            </div>
-                            <Zap className="w-6 h-6 text-[#FF006E]" />
-                        </div>
-                    </a>
+            <motion.div variants={staggerContainer} className="grid gap-4">
+              <motion.a
+                variants={fadeInUp}
+                href="#"
+                className="group relative block w-full p-6 rounded-2xl bg-[#1A0B2E]/80 border border-[#00F5FF]/30 hover:border-[#00F5FF] transition-all hover:shadow-[0_0_30px_rgba(0,245,255,0.15)]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <div className="text-xl font-bold text-white group-hover:text-[#00F5FF] transition-colors">Download .pkg Installer</div>
+                    <div className="text-sm text-[#6E6E8F] mt-1">Version 1.0.0 • Universal (Intel/Apple Silicon)</div>
+                  </div>
+                  <Download className="w-6 h-6 text-[#00F5FF]" />
                 </div>
-            </div>
-        </div>
+              </motion.a>
+
+              <motion.a
+                variants={fadeInUp}
+                href="https://github.com/ExistentialAudio/BlackHole/releases"
+                target="_blank"
+                className="group relative block w-full p-6 rounded-2xl bg-[#1A0B2E]/80 border border-[#FF006E]/30 hover:border-[#FF006E] transition-all hover:shadow-[0_0_30px_rgba(255,0,110,0.15)]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="text-left">
+                    <div className="text-xl font-bold text-white group-hover:text-[#FF006E] transition-colors">Get BlackHole Driver</div>
+                    <div className="text-sm text-[#6E6E8F] mt-1">Required for system audio routing</div>
+                  </div>
+                  <Zap className="w-6 h-6 text-[#FF006E]" />
+                </div>
+              </motion.a>
+            </motion.div>
+          </motion.div>
+        </motion.section>
+
+        {/* Footer */}
+        <motion.footer
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="py-12 px-6 bg-gradient-to-b from-transparent to-[#08080C]"
+        >
+          <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#6E6E8F] text-sm md:flex-row md:items-center md:justify-between">
+            <div>© 2025 Kairos. Built for audio enthusiasts.</div>
+            <a
+              href="https://github.com"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-2 text-[#6E6E8F] hover:text-[#00F5FF] transition-colors"
+            >
+              <Github className="w-4 h-4" />
+              GitHub
+            </a>
+          </div>
+        </motion.footer>
 
       </div>
     </div>
@@ -254,4 +391,357 @@ function NeonActionButton({ icon, title, subtitle, accentColor, onClick }: any) 
       </div>
     </motion.button>
   );
+}
+
+// Accent styles matching AudioShaper's AccentStyle
+const ACCENT_STYLES = [
+  { fill: '#8B3DFF', fillDark: '#3A0B73', highlight: '#00D9FF', text: '#FFFFFF' }, // Purple
+  { fill: '#FF006E', fillDark: '#7A1F4A', highlight: '#FFB3D9', text: '#FFFFFF' }, // Pink
+  { fill: '#00F5FF', fillDark: '#007C88', highlight: '#FFFFFF', text: '#FFFFFF' }, // Cyan
+];
+
+function EffectsCarousel() {
+  const baseCount = EFFECTS.length;
+  const CLONE_COUNT = 5; // Number of times to clone the array for infinite scroll
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const isScrollingRef = useRef(false);
+  const scrollTimeoutRef = useRef<number | null>(null);
+
+  // Create cloned items for infinite scroll
+  const items = useMemo(
+    () => Array.from({ length: CLONE_COUNT }, () => EFFECTS).flat(),
+    []
+  );
+
+  // Card width matches AudioShaper: 110px
+  const getCardWidth = useCallback(() => {
+    return 110;
+  }, []);
+
+  const getGap = () => 24; // gap-6 = 24px
+
+  // Center the scroll on mount
+  useEffect(() => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    // Start at the middle clone segment
+    const cardWidth = getCardWidth();
+    const gap = getGap();
+    const middleSegmentStart = baseCount * Math.floor(CLONE_COUNT / 2) * (cardWidth + gap);
+    const centerOffset = container.clientWidth / 2 - cardWidth / 2;
+    container.scrollLeft = middleSegmentStart - centerOffset;
+  }, [baseCount, getCardWidth]);
+
+  // Find the closest card to center and handle infinite loop repositioning
+  const updateActiveAndReposition = useCallback(() => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    const cardWidth = getCardWidth();
+    const gap = getGap();
+    const totalCardWidth = cardWidth + gap;
+    const segmentWidth = baseCount * totalCardWidth;
+    const viewportCenter = container.scrollLeft + container.clientWidth / 2;
+
+    // Find closest card to center
+    const cards = container.querySelectorAll<HTMLElement>('[data-effect-card]');
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    cards.forEach((card, index) => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(viewportCenter - cardCenter);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setActiveIndex(closestIndex);
+
+    // Infinite scroll repositioning - jump to equivalent position in middle segment
+    const middleSegmentStart = segmentWidth * Math.floor(CLONE_COUNT / 2);
+    const middleSegmentEnd = middleSegmentStart + segmentWidth;
+
+    if (container.scrollLeft < segmentWidth) {
+      // Scrolled too far left - jump to equivalent position in middle
+      container.scrollLeft += segmentWidth * 2;
+    } else if (container.scrollLeft > segmentWidth * (CLONE_COUNT - 1)) {
+      // Scrolled too far right - jump to equivalent position in middle
+      container.scrollLeft -= segmentWidth * 2;
+    }
+  }, [baseCount, getCardWidth]);
+
+  // Snap to center after scrolling stops
+  const snapToCenter = useCallback(() => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    const cardWidth = getCardWidth();
+    const gap = getGap();
+    const totalCardWidth = cardWidth + gap;
+    const viewportCenter = container.scrollLeft + container.clientWidth / 2;
+
+    // Find closest card
+    const cards = container.querySelectorAll<HTMLElement>('[data-effect-card]');
+    let closestCard: HTMLElement | null = null;
+    let closestDistance = Infinity;
+
+    cards.forEach((card) => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(viewportCenter - cardCenter);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestCard = card;
+      }
+    });
+
+    if (closestCard) {
+      const cardCenter = closestCard.offsetLeft + closestCard.offsetWidth / 2;
+      const targetScroll = cardCenter - container.clientWidth / 2;
+      container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+    }
+  }, [getCardWidth]);
+
+  // Handle scroll events
+  useEffect(() => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    let rafId: number | null = null;
+
+    const handleScroll = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        updateActiveAndReposition();
+      });
+
+      // Clear existing timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+
+      // Set new timeout for snap after scroll stops
+      isScrollingRef.current = true;
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        isScrollingRef.current = false;
+        snapToCenter();
+      }, 150);
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Initial active calculation
+    updateActiveAndReposition();
+
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    };
+  }, [updateActiveAndReposition, snapToCenter]);
+
+  // Get the current active effect's description
+  const activeEffect = EFFECTS[activeIndex % baseCount];
+
+  return (
+    <motion.section
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, margin: "-100px" }}
+      variants={staggerContainer}
+      className="relative py-32 overflow-hidden"
+    >
+      <motion.div variants={fadeInUp} className="relative max-w-6xl mx-auto px-6 mb-12">
+        <div className="text-center">
+          <h2 className="text-3xl font-black text-white mb-4">Effects Showcase</h2>
+          <p className="text-[#B8B8D1]">18 audio effects to shape your sound.</p>
+        </div>
+      </motion.div>
+
+      <motion.div variants={fadeInUp}>
+      <div
+        ref={carouselRef}
+        className="overflow-x-auto pb-8 scrollbar-hide cursor-grab active:cursor-grabbing"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <div
+          ref={innerRef}
+          className="flex gap-6 px-6 md:px-12"
+          style={{ width: 'max-content' }}
+        >
+          {items.map((effect, index) => {
+            const isActive = index === activeIndex;
+            const effectIndex = index % baseCount;
+            const styleIndex = effectIndex % ACCENT_STYLES.length;
+            const Icon = effect.icon;
+
+            return (
+              <div
+                key={`${effect.name}-${index}`}
+                data-effect-card
+                className="transition-all duration-300 ease-out"
+                style={{
+                  transform: isActive ? 'scale(1.08)' : 'scale(0.92)',
+                  opacity: isActive ? 1 : 0.5,
+                  filter: isActive ? 'none' : 'blur(1px)',
+                }}
+              >
+                <NeonTileCard
+                  icon={<Icon className="w-[26px] h-[26px]" strokeWidth={1.5} />}
+                  name={effect.name}
+                  style={ACCENT_STYLES[styleIndex]}
+                  isActive={isActive}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      </motion.div>
+
+      {/* Active effect description */}
+      <motion.div variants={fadeInUp} className="relative text-center mt-8">
+        <p className="text-[#B8B8D1] text-sm">{activeEffect.description}</p>
+      </motion.div>
+    </motion.section>
+  );
+}
+
+// NeonTile - EXACT match to AudioShaper's NeonTile from FlowLine.swift
+function NeonTileCard({
+  icon,
+  name,
+  style,
+  isActive
+}: {
+  icon: React.ReactNode;
+  name: string;
+  style: typeof ACCENT_STYLES[0];
+  isActive: boolean;
+}) {
+  const disabledFill = '#1A1426';
+
+  // Exact 110x110 square like AudioShaper - with padding for glow
+  return (
+    <div className="relative w-[110px] h-[110px]" style={{ margin: '24px' }}>
+      {/* Tile with all layers */}
+      <div
+        className="relative w-full h-full rounded-[22px] overflow-hidden"
+        style={{
+          // Shadows need to be on the main element to glow on ALL sides
+          boxShadow: isActive
+            ? `0 0 6px rgba(${hexToRgb(style.fill)}, 0.95), 0 0 20px rgba(${hexToRgb(style.fill)}, 0.6), 0 0 48px rgba(${hexToRgb(style.fill)}, 0.3)`
+            : 'none',
+        }}
+      >
+        {/* Layer 1: coreFill - gradient from fillDark */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: isActive
+              ? `linear-gradient(135deg, rgba(${hexToRgb(style.fillDark)}, 0.35) 0%, rgba(${hexToRgb(style.fillDark)}, 0.75) 50%, rgba(${hexToRgb(style.fillDark)}, 0.98) 100%)`
+              : `linear-gradient(135deg, ${disabledFill} 0%, rgba(${hexToRgb(disabledFill)}, 0.85) 100%)`,
+          }}
+        />
+
+        {/* Layer 2: edgeGlow - radial gradient, screen blend */}
+        {isActive && (
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: `radial-gradient(circle at center, rgba(${hexToRgb(style.fill)}, 0.22) 0%, rgba(${hexToRgb(style.fill)}, 0.08) 47%, transparent 100%)`,
+              mixBlendMode: 'screen',
+            }}
+          />
+        )}
+
+        {/* Layer 4: Inner blur glow */}
+        {isActive && (
+          <div
+            className="absolute inset-[6px] rounded-[16px] pointer-events-none"
+            style={{
+              boxShadow: `inset 0 0 12px rgba(${hexToRgb(style.fill)}, 0.7)`,
+            }}
+          />
+        )}
+
+        {/* Layer 6: Top highlight */}
+        <div
+          className="absolute inset-[6px] rounded-[16px] pointer-events-none"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, transparent 100%)',
+            mixBlendMode: 'screen',
+          }}
+        />
+
+        {/* Layer 7: Accent sheen */}
+        {isActive && (
+          <div
+            className="absolute inset-[10px] rounded-[12px] pointer-events-none overflow-hidden"
+          >
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(135deg, transparent 0%, rgba(${hexToRgb(style.highlight)}, 0.75) 50%, transparent 100%)`,
+                mixBlendMode: 'screen',
+                opacity: 0.9,
+                transform: 'rotate(-12deg) scale(2)',
+              }}
+            />
+          </div>
+        )}
+
+        {/* Content */}
+        <div className="relative z-10 flex flex-col items-center justify-center h-full px-[6px]">
+          <div
+            className="mb-[6px] transition-all duration-300"
+            style={{
+              color: isActive ? style.text : '#80759D',
+              filter: isActive
+                ? `drop-shadow(0 0 8px rgba(255,255,255,0.6)) drop-shadow(0 0 16px rgba(${hexToRgb(style.fill)}, 0.5))`
+                : 'none',
+            }}
+          >
+            {icon}
+          </div>
+
+          <div
+            className="text-[10px] font-semibold uppercase text-center leading-tight transition-all duration-300"
+            style={{
+              letterSpacing: '1.2px',
+              color: isActive ? 'rgba(255,255,255,0.95)' : '#80759D',
+              textShadow: isActive ? `0 0 10px rgba(${hexToRgb(style.fill)}, 0.4)` : 'none',
+            }}
+          >
+            {name}
+          </div>
+        </div>
+
+        {/* Border on top of everything */}
+        <div
+          className="absolute inset-0 rounded-[22px] pointer-events-none"
+          style={{
+            border: isActive
+              ? `4px solid ${style.fill}`
+              : `4px solid rgba(${hexToRgb(disabledFill)}, 0.6)`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Helper to convert hex to rgb values
+function hexToRgb(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return '0,0,0';
+  return `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}`;
 }

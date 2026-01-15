@@ -11,14 +11,14 @@ export const BackgroundAnimation = () => {
         className="absolute inset-0 opacity-100" // Opacity handled in gradient color
         initial={{ backgroundPosition: '0px 0px' }}
         animate={{ backgroundPosition: '0px 16px' }}
-        transition={{ 
-          repeat: Infinity, 
-          ease: "linear", 
-          duration: 1.6 
+        transition={{
+          repeat: Infinity,
+          ease: "linear",
+          duration: 1.6
         }}
         style={{
-          // Swift: Color.white.opacity(0.04) with 16px spacing
-          backgroundImage: 'repeating-linear-gradient(to bottom, rgba(255,255,255,0.04) 0px, rgba(255,255,255,0.04) 1px, transparent 1px, transparent 16px)',
+          backgroundImage:
+            'repeating-linear-gradient(to bottom, rgba(131,87,255,0.12) 0px, rgba(131,87,255,0.12) 1px, transparent 1px, transparent 16px)',
           backgroundSize: '100% 16px',
           mixBlendMode: 'screen'
         }}

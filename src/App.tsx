@@ -356,7 +356,7 @@ export default function App() {
           <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#6E6E8F] text-sm md:flex-row md:items-center md:justify-between">
             <div>© 2025 Laya. Built for audio enthusiasts.</div>
             <a
-              href="https://github.com"
+              href="https://github.com/skanda-vyas-srinivasan/Laya"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2 text-[#6E6E8F] hover:text-[#00F5FF] transition-colors"

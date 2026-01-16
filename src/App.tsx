@@ -147,7 +147,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="text-5xl md:text-6xl font-black tracking-tight text-[#FF006E]"
             style={{ textShadow: '0 0 20px rgba(255, 0, 110, 0.6)' }}>
-            Kairos
+            Laya
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -226,7 +226,7 @@ export default function App() {
                 Feature Showcase
               </h2>
               <p className="text-[#B8B8D1] max-w-2xl mx-auto">
-                Explore the different modes of Kairos, from simple automatic chains to complex manual routing.
+                Explore the different modes of Laya, from simple automatic chains to complex manual routing.
               </p>
             </motion.div>
 
@@ -302,7 +302,7 @@ export default function App() {
           <motion.div variants={fadeInUp} className="relative z-10 max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
               <Download className="text-[#00F5FF]" />
-              Get Kairos
+              Get Laya
             </h2>
             <p className="text-[#B8B8D1] mb-12">
               Requires macOS 13.0+ and BlackHole 2ch.
@@ -323,20 +323,6 @@ export default function App() {
                 </div>
               </motion.a>
 
-              <motion.a
-                variants={fadeInUp}
-                href="https://github.com/ExistentialAudio/BlackHole/releases"
-                target="_blank"
-                className="group relative block w-full p-6 rounded-2xl bg-[#1A0B2E]/80 border border-[#FF006E]/30 hover:border-[#FF006E] transition-all hover:shadow-[0_0_30px_rgba(255,0,110,0.15)]"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="text-left">
-                    <div className="text-xl font-bold text-white group-hover:text-[#FF006E] transition-colors">Get BlackHole Driver</div>
-                    <div className="text-sm text-[#6E6E8F] mt-1">Required for system audio routing</div>
-                  </div>
-                  <Zap className="w-6 h-6 text-[#FF006E]" />
-                </div>
-              </motion.a>
             </motion.div>
           </motion.div>
         </motion.section>
@@ -351,7 +337,7 @@ export default function App() {
           key={`footer-${resetKey}`}
         >
           <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#6E6E8F] text-sm md:flex-row md:items-center md:justify-between">
-            <div>© 2025 Kairos. Built for audio enthusiasts.</div>
+            <div>© 2025 Laya. Built for audio enthusiasts.</div>
             <a
               href="https://github.com"
               target="_blank"
@@ -407,11 +393,13 @@ function NeonActionButton({ icon, title, subtitle, accentColor, onClick }: any) 
   );
 }
 
-// Accent styles matching AudioShaper's AccentStyle
+// Accent styles matching the AudioShaper neon tile across multiple hues
 const ACCENT_STYLES = [
-  { fill: '#8B3DFF', fillDark: '#3A0B73', highlight: '#00D9FF', text: '#FFFFFF' }, // Purple
-  { fill: '#FF006E', fillDark: '#7A1F4A', highlight: '#FFB3D9', text: '#FFFFFF' }, // Pink
-  { fill: '#00F5FF', fillDark: '#007C88', highlight: '#FFFFFF', text: '#FFFFFF' }, // Cyan
+  { fill: '#4FF8FF', fillDark: '#003A44', highlight: '#C8FBFF', text: '#F8F1FF' }, // Cyan
+  { fill: '#FF56D7', fillDark: '#4A0B37', highlight: '#FFD0F0', text: '#F8F1FF' }, // Pinky Magenta
+  { fill: '#FFD54A', fillDark: '#4A3A00', highlight: '#FFF3B3', text: '#FFF7DE' }, // Yellow
+  { fill: '#D66BFF', fillDark: '#2A0B5E', highlight: '#F3C9FF', text: '#F8F1FF' }, // Purple
+  { fill: '#7CFF8A', fillDark: '#0B3F1A', highlight: '#D5FFD9', text: '#F4FFF5' }, // Light Green
 ];
 
 function EffectsCarousel() {
@@ -641,7 +629,8 @@ function NeonTileCard({
   style: typeof ACCENT_STYLES[0];
   isActive: boolean;
 }) {
-  const disabledFill = '#1A1426';
+  const glowStrength = isActive ? 1 : 0.55;
+  const dimFill = '#160A2A';
 
   // Exact 110x110 square like AudioShaper - with padding for glow
   return (
@@ -650,44 +639,44 @@ function NeonTileCard({
       <div
         className="relative w-full h-full rounded-[22px] overflow-hidden"
         style={{
-          // Shadows need to be on the main element to glow on ALL sides
-          boxShadow: isActive
-            ? `0 0 6px rgba(${hexToRgb(style.fill)}, 0.95), 0 0 20px rgba(${hexToRgb(style.fill)}, 0.6), 0 0 48px rgba(${hexToRgb(style.fill)}, 0.3)`
-            : 'none',
+          // Strong outer neon glow bleeding into the background
+          boxShadow: `0 0 14px rgba(${hexToRgb(style.fill)}, ${0.85 * glowStrength}), 0 0 36px rgba(${hexToRgb(style.fill)}, ${0.55 * glowStrength}), 0 0 80px rgba(${hexToRgb(style.fill)}, ${0.35 * glowStrength})`,
         }}
       >
-        {/* Layer 1: coreFill - gradient from fillDark */}
+        {/* Layer 0: soft halo to fake projection */}
+        <div
+          className="absolute -inset-8 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle, rgba(${hexToRgb(style.fill)}, ${0.22 * glowStrength}) 0%, transparent 65%)`,
+            filter: 'blur(6px)',
+          }}
+        />
+
+        {/* Layer 1: coreFill - deep purple gradient */}
         <div
           className="absolute inset-0"
           style={{
             background: isActive
-              ? `linear-gradient(135deg, rgba(${hexToRgb(style.fillDark)}, 0.35) 0%, rgba(${hexToRgb(style.fillDark)}, 0.75) 50%, rgba(${hexToRgb(style.fillDark)}, 0.98) 100%)`
-              : `linear-gradient(135deg, ${disabledFill} 0%, rgba(${hexToRgb(disabledFill)}, 0.85) 100%)`,
+              ? `linear-gradient(135deg, rgba(${hexToRgb(style.fillDark)}, 0.98) 0%, rgba(84, 26, 160, 0.95) 45%, rgba(40, 12, 80, 0.98) 100%)`
+              : `linear-gradient(135deg, ${dimFill} 0%, rgba(${hexToRgb(dimFill)}, 0.95) 100%)`,
           }}
         />
 
-        {/* Layer 2: edgeGlow - radial gradient, screen blend */}
-        {isActive && (
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: `radial-gradient(circle at center, rgba(${hexToRgb(style.fill)}, 0.22) 0%, rgba(${hexToRgb(style.fill)}, 0.08) 47%, transparent 100%)`,
-              mixBlendMode: 'screen',
-            }}
-          />
-        )}
+        {/* Layer 2: inner edge glow, no hard border */}
+        <div
+          className="absolute inset-[3px] rounded-[19px] pointer-events-none"
+          style={{
+            boxShadow: `inset 0 0 12px rgba(${hexToRgb(style.fill)}, ${0.75 * glowStrength}), inset 0 0 26px rgba(${hexToRgb(style.fill)}, ${0.45 * glowStrength})`,
+          }}
+        />
+        <div
+          className="absolute inset-[1px] rounded-[21px] pointer-events-none"
+          style={{
+            boxShadow: `inset 0 0 6px rgba(${hexToRgb(style.fill)}, ${0.7 * glowStrength})`,
+          }}
+        />
 
-        {/* Layer 4: Inner blur glow */}
-        {isActive && (
-          <div
-            className="absolute inset-[6px] rounded-[16px] pointer-events-none"
-            style={{
-              boxShadow: `inset 0 0 12px rgba(${hexToRgb(style.fill)}, 0.7)`,
-            }}
-          />
-        )}
-
-        {/* Layer 6: Top highlight */}
+        {/* Layer 3: top highlight */}
         <div
           className="absolute inset-[6px] rounded-[16px] pointer-events-none"
           style={{
@@ -696,7 +685,7 @@ function NeonTileCard({
           }}
         />
 
-        {/* Layer 7: Accent sheen */}
+        {/* Layer 4: accent sheen */}
         {isActive && (
           <div
             className="absolute inset-[10px] rounded-[12px] pointer-events-none overflow-hidden"
@@ -704,24 +693,31 @@ function NeonTileCard({
             <div
               className="absolute inset-0"
               style={{
-                background: `linear-gradient(135deg, transparent 0%, rgba(${hexToRgb(style.highlight)}, 0.75) 50%, transparent 100%)`,
+                background: `linear-gradient(135deg, transparent 0%, rgba(${hexToRgb(style.highlight)}, 0.85) 50%, transparent 100%)`,
                 mixBlendMode: 'screen',
-                opacity: 0.9,
+                opacity: 0.95,
                 transform: 'rotate(-12deg) scale(2)',
               }}
             />
           </div>
         )}
 
+        {/* Layer 5: glassy bloom */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `radial-gradient(circle at 60% 25%, rgba(${hexToRgb(style.highlight)}, ${0.25 * glowStrength}) 0%, transparent 55%)`,
+            mixBlendMode: 'screen',
+          }}
+        />
+
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center justify-center h-full px-[6px]">
           <div
             className="mb-[6px] transition-all duration-300"
             style={{
-              color: isActive ? style.text : '#80759D',
-              filter: isActive
-                ? `drop-shadow(0 0 8px rgba(255,255,255,0.6)) drop-shadow(0 0 16px rgba(${hexToRgb(style.fill)}, 0.5))`
-                : 'none',
+              color: style.text,
+              filter: `drop-shadow(0 0 10px rgba(${hexToRgb(style.fill)}, ${0.85 * glowStrength}))`,
             }}
           >
             {icon}
@@ -730,24 +726,14 @@ function NeonTileCard({
           <div
             className="text-[10px] font-semibold uppercase text-center leading-tight transition-all duration-300"
             style={{
-              letterSpacing: '1.2px',
-              color: isActive ? 'rgba(255,255,255,0.95)' : '#80759D',
-              textShadow: isActive ? `0 0 10px rgba(${hexToRgb(style.fill)}, 0.4)` : 'none',
+              letterSpacing: '1.6px',
+              color: style.text,
+              textShadow: `0 0 14px rgba(${hexToRgb(style.fill)}, ${0.7 * glowStrength})`,
             }}
           >
             {name}
           </div>
         </div>
-
-        {/* Border on top of everything */}
-        <div
-          className="absolute inset-0 rounded-[22px] pointer-events-none"
-          style={{
-            border: isActive
-              ? `4px solid ${style.fill}`
-              : `4px solid rgba(${hexToRgb(disabledFill)}, 0.6)`,
-          }}
-        />
       </div>
     </div>
   );

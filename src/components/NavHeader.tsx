@@ -17,7 +17,7 @@ export function NavHeader({ onHero, onFeatures, onEffects, onDownload }: NavHead
           className="text-xl font-black tracking-tight text-[#FF006E]"
           style={{ textShadow: '0 0 14px rgba(255, 0, 110, 0.6)' }}
         >
-          Laya
+          Sonexis
         </button>
         <nav className="flex items-center gap-6 text-sm font-semibold uppercase tracking-widest">
           <button

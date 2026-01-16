@@ -37,7 +37,7 @@ function ReleasesPage() {
             className="flex items-center gap-3 text-sm font-semibold uppercase tracking-widest text-[#B8B8D1] transition-colors hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Laya
+            Back to Sonexis
           </a>
           <div className="text-sm font-semibold uppercase tracking-widest text-[#6E6E8F]">All Releases</div>
         </div>
@@ -46,9 +46,9 @@ function ReleasesPage() {
       <main className="relative z-10 px-6 pb-24 pt-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">All Builds of Laya</h1>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">All Builds of Sonexis</h1>
             <p className="mt-3 max-w-2xl text-[#B8B8D1]">
-              All builds of Laya for macOS. Download older versions if you need compatibility with a specific setup.
+              All builds of Sonexis for macOS. Download older versions if you need compatibility with a specific setup.
             </p>
           </div>
 

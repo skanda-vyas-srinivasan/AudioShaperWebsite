@@ -172,7 +172,7 @@ export default function App() {
             animate={{ opacity: 1, scale: 1 }}
             className="text-5xl md:text-6xl font-black tracking-tight text-[#FF006E]"
             style={{ textShadow: '0 0 20px rgba(255, 0, 110, 0.6)' }}>
-            Laya
+            Sonexis
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
@@ -220,7 +220,7 @@ export default function App() {
               What It Does
             </div>
             <p className="text-sm md:text-base text-[#B8B8D1]">
-              Laya is a Mac app for real-time, system-wide audio shaping. Build custom effect
+              Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
               chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
               stable, low‑latency routing.
             </p>
@@ -244,7 +244,7 @@ export default function App() {
                 Feature Showcase
               </h2>
               <p className="text-[#B8B8D1] max-w-2xl mx-auto">
-                Explore the different modes of Laya, from simple automatic chains to complex manual routing.
+                Explore the different modes of Sonexis, from simple automatic chains to complex manual routing.
               </p>
             </motion.div>
 
@@ -320,7 +320,7 @@ export default function App() {
           <motion.div variants={fadeInUp} className="relative z-10 max-w-3xl mx-auto text-center">
             <h2 className="text-3xl font-bold text-white mb-4 flex items-center justify-center gap-3">
               <Download className="text-[#00F5FF]" />
-              Get Laya
+              Get Sonexis
             </h2>
             <p className="text-[#B8B8D1] mb-12">
               Requires macOS 13.0+ and BlackHole 2ch.
@@ -377,7 +377,7 @@ export default function App() {
           key={`footer-${resetKey}`}
         >
           <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#6E6E8F] text-sm md:flex-row md:items-center md:justify-between">
-            <div>© 2025 Laya. Built for audio enthusiasts.</div>
+            <div>© 2025 Sonexis. Built for audio enthusiasts.</div>
             <a
               href="https://github.com/skanda-vyas-srinivasan/Laya"
               target="_blank"

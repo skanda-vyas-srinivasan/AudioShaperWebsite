@@ -123,8 +123,9 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
       <NavHeader
+        onHero={() => scrollTo(heroRef)}
         onFeatures={() => scrollTo(videoRef)}
-        onDemo={() => scrollTo(videoRef)}
+        onEffects={() => scrollTo(effectsWrapRef)}
         onDownload={() => scrollTo(downloadRef)}
       />
       
@@ -179,23 +180,6 @@ export default function App() {
         
         </div>
 
-        {/* What It Does */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25 }}
-          className="relative z-10 mt-12 px-6 max-w-3xl text-center"
-        >
-          <div className="text-xs font-semibold tracking-[0.3em] text-[#6E6E8F] uppercase mb-4">
-            What It Does
-          </div>
-          <p className="text-sm md:text-base text-[#B8B8D1]">
-            AudioShaper is a Mac app for real‑time, system‑wide audio shaping. Build custom effect
-            chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
-            stable, low‑latency routing.
-          </p>
-        </motion.div>
-
         {/* Bottom Spacer */}
         <div className="flex-1" />
 
@@ -208,6 +192,25 @@ export default function App() {
 
       {/* 2. SCROLL CONTENT - Clean, minimal */}
       <div className="relative z-10">
+        {/* What It Does */}
+        <motion.section
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="relative z-10 px-6 pt-10 pb-16"
+        >
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="text-xs font-semibold tracking-[0.3em] text-[#6E6E8F] uppercase mb-4">
+              What It Does
+            </div>
+            <p className="text-sm md:text-base text-[#B8B8D1]">
+              Laya is a Mac app for real-time, system-wide audio shaping. Build custom effect
+              chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
+              stable, low‑latency routing.
+            </p>
+          </div>
+        </motion.section>
 
         {/* Video Section - FEATURE SHOWCASE */}
         <motion.section
@@ -312,14 +315,28 @@ export default function App() {
               <motion.a
                 variants={fadeInUp}
                 href="#"
-                className="group relative block w-full p-6 rounded-2xl bg-[#1A0B2E]/80 border border-[#00F5FF]/30 hover:border-[#00F5FF] transition-all hover:shadow-[0_0_30px_rgba(0,245,255,0.15)]"
+                className="group relative block w-full overflow-hidden rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6 transition-all duration-300 hover:border-[#5A5A7A]"
               >
-                <div className="flex items-center justify-between">
+                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.08),transparent_55%)]" />
+                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+                </div>
+                <div className="relative flex items-center justify-between">
                   <div className="text-left">
-                    <div className="text-xl font-bold text-white group-hover:text-[#00F5FF] transition-colors">Download .pkg Installer</div>
-                    <div className="text-sm text-[#6E6E8F] mt-1">Version 1.0.0 • Universal (Intel/Apple Silicon)</div>
+                    <div className="text-sm uppercase tracking-[0.24em] text-[#8B8BA3]">Download</div>
+                    <div className="mt-2 text-2xl font-semibold text-white transition-colors group-hover:text-[#F4F4FF]">
+                      macOS Installer
+                    </div>
+                    <div className="mt-1 text-sm text-[#6E6E8F]">Version 1.0.0 • Universal (Intel/Apple Silicon)</div>
                   </div>
-                  <Download className="w-6 h-6 text-[#00F5FF]" />
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B8BA3]">
+                      .pkg
+                    </div>
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#34344A] bg-[#12121C] transition-all duration-300 group-hover:border-[#6A6A8A] group-hover:bg-[#171725]">
+                      <Download className="h-5 w-5 text-white" />
+                    </div>
+                  </div>
                 </div>
               </motion.a>
 

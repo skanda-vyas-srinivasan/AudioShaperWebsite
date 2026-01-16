@@ -1,18 +1,19 @@
 import React from 'react';
 
 type NavHeaderProps = {
+  onHero: () => void;
   onFeatures: () => void;
-  onDemo: () => void;
+  onEffects: () => void;
   onDownload: () => void;
 };
 
-export function NavHeader({ onFeatures, onDemo, onDownload }: NavHeaderProps) {
+export function NavHeader({ onHero, onFeatures, onEffects, onDownload }: NavHeaderProps) {
   return (
     <header className="fixed top-0 z-50 w-full border-b border-[#1F1F3D] bg-[#0A0A0F]/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
         <button
           type="button"
-          onClick={onFeatures}
+          onClick={onHero}
           className="text-xl font-black tracking-tight text-[#FF006E]"
           style={{ textShadow: '0 0 14px rgba(255, 0, 110, 0.6)' }}
         >
@@ -28,10 +29,10 @@ export function NavHeader({ onFeatures, onDemo, onDownload }: NavHeaderProps) {
           </button>
           <button
             type="button"
-            onClick={onDemo}
+            onClick={onEffects}
             className="text-[#B8B8D1] transition-colors hover:text-[#00F5FF]"
           >
-            Demo
+            Effects
           </button>
           <button
             type="button"

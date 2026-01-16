@@ -1,10 +1,10 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'framer-motion';
 import {
-  Download, Play, Monitor, Zap, Settings, Repeat, Layers, Github,
+  Download, Monitor, Zap, Settings, Repeat, Layers, Github,
   Volume2, Sparkles, Building2, Activity, ArrowLeftRight, Rabbit,
   Music2, SlidersHorizontal, Grid3X3, Timer, RefreshCw,
-  AudioWaveform, CircleDot, Circle, Disc, TriangleRight
+  AudioWaveform, CircleDot, Circle, Disc, ChevronDown
 } from 'lucide-react';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
 import { NavHeader } from './components/NavHeader';
@@ -91,6 +91,8 @@ export default function App() {
   const heroInView = useInView(heroRef, { amount: 0.6 });
   const heroWasInView = useRef(false);
   const [resetKey, setResetKey] = useState(0);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const lastScrollAtRef = useRef<number>(Date.now());
 
   const { scrollYProgress: effectsProgress } = useScroll({
     target: effectsWrapRef,
@@ -120,6 +122,31 @@ export default function App() {
     heroWasInView.current = heroInView;
   }, [heroInView]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      lastScrollAtRef.current = Date.now();
+      setShowScrollHint(false);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    const intervalId = window.setInterval(() => {
+      if (!heroInView) {
+        setShowScrollHint(false);
+        return;
+      }
+
+      const idleForMs = Date.now() - lastScrollAtRef.current;
+      if (idleForMs >= 2500) {
+        setShowScrollHint(true);
+      }
+    }, 300);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.clearInterval(intervalId);
+    };
+  }, [heroInView]);
+
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
       <NavHeader
@@ -136,10 +163,7 @@ export default function App() {
       />
 
       {/* 1. APP HOME REPLICA (Hero) */}
-      <section ref={heroRef} className="relative h-screen flex flex-col items-center justify-between py-12">
-        
-        {/* Top Spacer */}
-        <div className="flex-1" />
+      <section ref={heroRef} className="relative h-screen flex flex-col items-center justify-center py-12">
 
         {/* Title Section */}
         <div className="relative z-10 flex flex-col items-center gap-2 mb-16">
@@ -159,34 +183,25 @@ export default function App() {
           </motion.p>
         </div>
 
-        {/* The Two Big Buttons */}
-        <div className="relative z-10 flex flex-col md:flex-row gap-6 items-center justify-center w-full px-4">
-          
-          <NeonActionButton 
-            icon={<Download className="w-8 h-8 text-[#00F5FF]" />}
-            title="Download App"
-            subtitle="macOS Universal"
-            accentColor="#00F5FF"
-            onClick={() => scrollTo(downloadRef)}
-          />
-
-          <NeonActionButton 
-            icon={<Play className="w-8 h-8 text-[#FF006E]" />}
-            title="Watch Demos"
-            subtitle="See it in action"
-            accentColor="#FF006E"
-            onClick={() => scrollTo(videoRef)}
-          />
-        
-        </div>
-
-        {/* Bottom Spacer */}
-        <div className="flex-1" />
-
         {/* Footer Tagline */}
-        <div className="relative z-10 text-[#6E6E8F] text-sm font-medium opacity-80 mb-4">
+        <div className="absolute inset-x-0 bottom-6 z-10 text-center text-[#6E6E8F] text-sm font-medium opacity-80">
           Made by Skanda Vyas Srinivasan
         </div>
+
+        <AnimatePresence>
+          {showScrollHint && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute inset-x-0 bottom-14 z-10 flex flex-col items-center text-[10px] font-semibold uppercase tracking-[0.3em] text-[#6E6E8F]"
+            >
+              <span>Scroll Down</span>
+              <ChevronDown className="mt-2 h-4 w-4 text-[#6E6E8F]" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
 

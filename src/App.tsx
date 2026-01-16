@@ -339,6 +339,14 @@ export default function App() {
                   </div>
                 </div>
               </motion.a>
+              <motion.div variants={fadeInUp} className="mt-6 text-center">
+                <a
+                  href="/releases.html"
+                  className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8B8BA3] transition-colors hover:text-white"
+                >
+                  All Releases
+                </a>
+              </motion.div>
 
             </motion.div>
           </motion.div>

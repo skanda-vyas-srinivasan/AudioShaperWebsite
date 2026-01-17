@@ -4,7 +4,8 @@ import {
   Download, Monitor, Zap, Settings, Repeat, Layers, Github,
   Volume2, Sparkles, Building2, Activity, ArrowLeftRight, Rabbit,
   Music2, SlidersHorizontal, Grid3X3, Timer, RefreshCw,
-  AudioWaveform, CircleDot, Circle, Disc, ChevronDown
+  AudioWaveform, CircleDot, Circle, Disc, ChevronDown,
+  MessageSquare, Coffee
 } from 'lucide-react';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
 import { NavHeader } from './components/NavHeader';
@@ -323,7 +324,7 @@ export default function App() {
               Get Sonexis
             </h2>
             <p className="text-[#B8B8D1] mb-12">
-              Requires macOS 13.0+ and BlackHole 2ch.
+              Requires macOS 13.0+
             </p>
 
             <motion.div variants={staggerContainer} className="grid gap-4">
@@ -360,6 +361,28 @@ export default function App() {
                   className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8B8BA3] transition-colors hover:text-white"
                 >
                   All Releases
+                </a>
+              </motion.div>
+
+              {/* Feedback & Support */}
+              <motion.div variants={fadeInUp} className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSeXHXSNwwz63HbKqPvYYDv422RuUv8jcTd9ZxWHJSBVwMzlSg/viewform"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#2A2A3F] bg-[#0E0E16] text-[#B8B8D1] text-sm font-medium transition-all hover:border-[#5A5A7A] hover:text-white"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Send Feedback
+                </a>
+                <a
+                  href="https://buymeacoffee.com/golgiwaffles"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#2A2A3F] bg-[#0E0E16] text-[#B8B8D1] text-sm font-medium transition-all hover:border-[#FFDD00] hover:text-[#FFDD00]"
+                >
+                  <Coffee className="w-4 h-4" />
+                  Buy Me a Coffee
                 </a>
               </motion.div>
 

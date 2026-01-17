@@ -34,28 +34,28 @@ const FEATURE_VIDEOS = [
     id: 'auto',
     title: 'Automatic Wiring',
     desc: 'Snap effects into a chain effortlessly. We handle the signal flow.',
-    src: '/videos/AutoTrim.mov',
+    src: '/videos/AutoTrim.mp4',
     icon: <Zap className="w-5 h-5" />
   },
   {
     id: 'manual',
     title: 'Manual Control',
     desc: 'Design complex, custom parallel paths for total sonic control.',
-    src: '/videos/RegManualTrim.mov',
+    src: '/videos/RegManualTrim.mp4',
     icon: <Settings className="w-5 h-5" />
   },
   {
     id: 'dual',
     title: 'Dual Mono Mode',
     desc: 'Separate Left and Right channel processing for independent shaping.',
-    src: '/videos/DualTrim.mov',
+    src: '/videos/DualTrim.mp4',
     icon: <Layers className="w-5 h-5" />
   },
   {
     id: 'presets',
     title: 'Presets & Flow',
     desc: 'Save your favorite chains and switch between them instantly.',
-    src: '/videos/PresetTrim.mov',
+    src: '/videos/PresetTrim.mp4',
     icon: <Repeat className="w-5 h-5" />
   }
 ];
@@ -147,6 +147,25 @@ export default function App() {
       window.clearInterval(intervalId);
     };
   }, [heroInView]);
+
+  useEffect(() => {
+    const preloaded = FEATURE_VIDEOS.map((video) => {
+      const el = document.createElement('video');
+      el.src = video.src;
+      el.preload = 'auto';
+      el.muted = true;
+      el.playsInline = true;
+      el.load();
+      return el;
+    });
+
+    return () => {
+      preloaded.forEach((el) => {
+        el.removeAttribute('src');
+        el.load();
+      });
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">

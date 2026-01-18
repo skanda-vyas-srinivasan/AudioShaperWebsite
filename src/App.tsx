@@ -492,6 +492,20 @@ function EffectsCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const isScrollingRef = useRef(false);
   const scrollTimeoutRef = useRef<number | null>(null);
+  const momentumRafRef = useRef<number | null>(null);
+  const isMomentumRef = useRef(false);
+  const dragStateRef = useRef({
+    isDragging: false,
+    moved: false,
+    startX: 0,
+    startScrollLeft: 0,
+    pointerId: null as number | null,
+  });
+  const lastMoveRef = useRef({
+    x: 0,
+    time: 0,
+    velocity: 0,
+  });
 
   // Create cloned items for infinite scroll
   const items = useMemo(
@@ -590,6 +604,27 @@ function EffectsCarousel() {
     }
   }, [getCardWidth]);
 
+  const scrollToIndex = useCallback((index: number) => {
+    const container = carouselRef.current;
+    if (!container) return;
+    const cards = container.querySelectorAll<HTMLElement>('[data-effect-card]');
+    const targetCard = cards[index];
+    if (!targetCard) return;
+    const cardCenter = targetCard.offsetLeft + targetCard.offsetWidth / 2;
+    const targetScroll = cardCenter - container.clientWidth / 2;
+    container.scrollTo({ left: targetScroll, behavior: 'smooth' });
+  }, []);
+
+  const scheduleSnap = useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      if (dragStateRef.current.isDragging || isMomentumRef.current) return;
+      snapToCenter();
+    }, 150);
+  }, [snapToCenter]);
+
   // Handle scroll events
   useEffect(() => {
     const container = carouselRef.current;
@@ -603,17 +638,10 @@ function EffectsCarousel() {
         updateActiveAndReposition();
       });
 
-      // Clear existing timeout
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-      }
-
-      // Set new timeout for snap after scroll stops
       isScrollingRef.current = true;
-      scrollTimeoutRef.current = window.setTimeout(() => {
-        isScrollingRef.current = false;
-        snapToCenter();
-      }, 150);
+      if (!dragStateRef.current.isDragging && !isMomentumRef.current) {
+        scheduleSnap();
+      }
     };
 
     container.addEventListener('scroll', handleScroll, { passive: true });
@@ -626,7 +654,89 @@ function EffectsCarousel() {
       if (rafId) cancelAnimationFrame(rafId);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
-  }, [updateActiveAndReposition, snapToCenter]);
+  }, [scheduleSnap, updateActiveAndReposition]);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 && event.pointerType === 'mouse') return;
+    const container = carouselRef.current;
+    if (!container) return;
+    if (momentumRafRef.current) {
+      cancelAnimationFrame(momentumRafRef.current);
+      momentumRafRef.current = null;
+    }
+    isMomentumRef.current = false;
+    dragStateRef.current.isDragging = true;
+    dragStateRef.current.moved = false;
+    dragStateRef.current.startX = event.clientX;
+    dragStateRef.current.startScrollLeft = container.scrollLeft;
+    dragStateRef.current.pointerId = event.pointerId;
+    lastMoveRef.current = {
+      x: event.clientX,
+      time: performance.now(),
+      velocity: 0,
+    };
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    const container = carouselRef.current;
+    if (!container || !dragStateRef.current.isDragging) return;
+    const now = performance.now();
+    const dt = Math.max(1, now - lastMoveRef.current.time);
+    const dx = event.clientX - lastMoveRef.current.x;
+    const deltaX = event.clientX - dragStateRef.current.startX;
+    if (Math.abs(deltaX) > 2) {
+      dragStateRef.current.moved = true;
+    }
+    const dragMultiplier = 1.15;
+    container.scrollLeft = dragStateRef.current.startScrollLeft - deltaX * dragMultiplier;
+    lastMoveRef.current = {
+      x: event.clientX,
+      time: now,
+      velocity: dx / dt,
+    };
+  };
+
+  const startMomentum = useCallback(() => {
+    const container = carouselRef.current;
+    if (!container) return;
+    let velocity = lastMoveRef.current.velocity;
+    if (Math.abs(velocity) < 0.01) {
+      scheduleSnap();
+      return;
+    }
+    isMomentumRef.current = true;
+    let lastTime = performance.now();
+    const friction = 0.94;
+
+    const step = () => {
+      const now = performance.now();
+      const dt = Math.min(32, now - lastTime);
+      lastTime = now;
+      container.scrollLeft -= velocity * dt * 1.15;
+      velocity *= Math.pow(friction, dt / 16);
+      if (Math.abs(velocity) < 0.01) {
+        isMomentumRef.current = false;
+        momentumRafRef.current = null;
+        scheduleSnap();
+        return;
+      }
+      momentumRafRef.current = requestAnimationFrame(step);
+    };
+
+    momentumRafRef.current = requestAnimationFrame(step);
+  }, [scheduleSnap]);
+
+  const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStateRef.current.isDragging) return;
+    const container = carouselRef.current;
+    if (container && dragStateRef.current.pointerId !== null) {
+      container.releasePointerCapture(dragStateRef.current.pointerId);
+    }
+    dragStateRef.current.isDragging = false;
+    dragStateRef.current.pointerId = null;
+    startMomentum();
+  };
 
   // Get the current active effect's description
   const activeEffect = EFFECTS[activeIndex % baseCount];
@@ -649,12 +759,17 @@ function EffectsCarousel() {
       <motion.div variants={fadeInUp}>
       <div
         ref={carouselRef}
-        className="overflow-x-auto pb-8 scrollbar-hide cursor-grab active:cursor-grabbing"
+        className="overflow-x-auto pb-8 scrollbar-hide cursor-grab active:cursor-grabbing select-none"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
           WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
         }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
       >
         <div
           ref={innerRef}
@@ -672,6 +787,10 @@ function EffectsCarousel() {
                 key={`${effect.name}-${index}`}
                 data-effect-card
                 className="transition-all duration-300 ease-out"
+                onClick={() => {
+                  if (dragStateRef.current.moved) return;
+                  scrollToIndex(index);
+                }}
                 style={{
                   transform: isActive ? 'scale(1.08)' : 'scale(0.92)',
                   opacity: isActive ? 1 : 0.5,

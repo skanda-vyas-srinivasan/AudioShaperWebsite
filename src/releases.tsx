@@ -22,7 +22,7 @@ const RELEASES: Release[] = [
       'Effect canvas for building custom chains.',
       'Low-latency monitoring for real-time tweaks.'
     ],
-    downloadUrl: '#'
+    downloadUrl: '/Sonexis.dmg'
   }
 ];
 

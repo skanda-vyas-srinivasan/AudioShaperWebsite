@@ -349,7 +349,7 @@ export default function App() {
             <motion.div variants={staggerContainer} className="grid gap-4">
               <motion.a
                 variants={fadeInUp}
-                href="#"
+                href="/Sonexis.dmg"
                 className="group relative block w-full overflow-hidden rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6 transition-all duration-300 hover:border-[#5A5A7A]"
               >
                 <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
@@ -366,7 +366,7 @@ export default function App() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B8BA3]">
-                      .pkg
+                      .dmg
                     </div>
                     <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#34344A] bg-[#12121C] transition-all duration-300 group-hover:border-[#6A6A8A] group-hover:bg-[#171725]">
                       <Download className="h-5 w-5 text-white" />

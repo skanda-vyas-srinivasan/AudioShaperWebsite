@@ -381,8 +381,8 @@ export default function App() {
                       macOS Installer
                     </div>
                     <div className="mt-1 text-sm text-[#6E6E8F]">
-                      Version 1.0.0 • Universal (Intel/Apple Silicon)
-                      {downloadCount !== null && <span className="ml-2">• {downloadCount.toLocaleString()} downloads</span>}
+                      Version 1.0.0
+                      {downloadCount !== null && <span className="ml-2">• Total downloads: {downloadCount.toLocaleString()}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

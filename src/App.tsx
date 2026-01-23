@@ -94,6 +94,23 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [showScrollHint, setShowScrollHint] = useState(false);
   const lastScrollAtRef = useRef<number>(Date.now());
+  const [downloadCount, setDownloadCount] = useState<number | null>(null);
+
+  // Fetch download count on mount
+  useEffect(() => {
+    fetch('/api/downloads')
+      .then(res => res.json())
+      .then(data => setDownloadCount(data.count))
+      .catch(() => {});
+  }, []);
+
+  const handleDownload = () => {
+    // Increment counter
+    fetch('/api/downloads', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => setDownloadCount(data.count))
+      .catch(() => {});
+  };
 
   const { scrollYProgress: effectsProgress } = useScroll({
     target: effectsWrapRef,
@@ -350,6 +367,7 @@ export default function App() {
               <motion.a
                 variants={fadeInUp}
                 href="/Sonexis.dmg"
+                onClick={handleDownload}
                 className="group relative block w-full overflow-hidden rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6 transition-all duration-300 hover:border-[#5A5A7A]"
               >
                 <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
@@ -362,7 +380,10 @@ export default function App() {
                     <div className="mt-2 text-2xl font-semibold text-white transition-colors group-hover:text-[#F4F4FF]">
                       macOS Installer
                     </div>
-                    <div className="mt-1 text-sm text-[#6E6E8F]">Version 1.0.0 • Universal (Intel/Apple Silicon)</div>
+                    <div className="mt-1 text-sm text-[#6E6E8F]">
+                      Version 1.0.0 • Universal (Intel/Apple Silicon)
+                      {downloadCount !== null && <span className="ml-2">• {downloadCount.toLocaleString()} downloads</span>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B8BA3]">

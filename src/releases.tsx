@@ -14,6 +14,17 @@ type Release = {
 
 const RELEASES: Release[] = [
   {
+    version: '1.0.1',
+    date: '2026-01-28',
+    summary: 'Preset import/export and Enhancer effect.',
+    highlights: [
+      'Import/export your presets as a single file.',
+      'New Enhancer effect for quick sonic polish.',
+      'Preset list actions and hover polish.'
+    ],
+    downloadUrl: '/Sonexis.dmg'
+  },
+  {
     version: '1.0.0',
     date: '2025-02-01',
     summary: 'Initial public release.',
@@ -46,10 +57,7 @@ function ReleasesPage() {
       <main className="relative z-10 px-6 pb-24 pt-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">All Builds of Sonexis</h1>
-            <p className="mt-3 max-w-2xl text-[#B8B8D1]">
-              All builds of Sonexis for macOS. Download older versions if you need compatibility with a specific setup.
-            </p>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">Past Releases</h1>
           </div>
 
           <div className="grid gap-6">

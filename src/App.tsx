@@ -87,22 +87,22 @@ const FAQ_ITEMS = [
   {
     question: 'Will Sonexis work with Spotify, Netflix, YouTube, or Apple Music?',
     answer:
-      'Yes. Sonexis is system-wide, which means it sits between macOS and your speakers/headphones and processes anything that plays audio. If an app outputs sound on your Mac, Sonexis can shape it - Spotify, Netflix, YouTube, Apple Music, browser tabs, and more.',
+      'Yes. Sonexis is system-wide and processes anything that plays audio on your Mac. If an app outputs sound, Sonexis can shape it.',
   },
   {
     question: 'How does it actually work under the hood?',
     answer:
-      'Sonexis uses a virtual audio device (BlackHole) to reroute macOS system audio into the app. Your effect chain is applied in real time, then the processed signal is sent out to your chosen speakers or headphones. When you turn Sonexis off, your system audio routing returns to normal.',
+      'Sonexis uses a virtual audio device (BlackHole) to route system audio into the app. It applies your effects in real time, then sends the processed audio to your speakers or headphones. When you turn Sonexis off, routing returns to normal.',
   },
   {
     question: 'Do I need BlackHole to use Sonexis?',
     answer:
-      'Yes. BlackHole is the virtual audio driver that makes system-wide processing possible on macOS. Sonexis includes the installer and walks you through setup, so you do not need to configure anything manually beyond the first run.',
+      'Yes. BlackHole is required for system-wide audio on macOS. Sonexis includes the installer and guides you through setup.',
   },
   {
     question: 'Is there noticeable latency?',
     answer:
-      'Sonexis is designed for low-latency processing, so the effects feel immediate during normal listening. The exact latency depends on your hardware and effect chain, but it is tuned to stay responsive for everyday use.',
+      'Latency is low for normal listening. The exact amount depends on your hardware and effect chain.',
   },
 ];
 
@@ -110,6 +110,7 @@ export default function App() {
   const heroRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const effectsWrapRef = useRef<HTMLDivElement>(null);
+  const faqRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
   const [activeVideo, setActiveVideo] = useState(FEATURE_VIDEOS[0]);
   const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
@@ -216,6 +217,7 @@ export default function App() {
         onHero={() => scrollTo(heroRef)}
         onFeatures={() => scrollTo(videoRef)}
         onEffects={() => scrollTo(effectsWrapRef)}
+        onFaq={() => scrollTo(faqRef)}
         onDownload={() => scrollTo(downloadRef)}
       />
       
@@ -372,6 +374,7 @@ export default function App() {
 
         {/* FAQ Section */}
         <motion.section
+          ref={faqRef}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}

@@ -16,9 +16,10 @@ const RELEASES: Release[] = [
   {
     version: '1.0.1',
     date: '2026-01-28',
-    summary: 'Preset import/export and Enhancer effect.',
+    summary: 'Preset sharing and Enhancer effect.',
     highlights: [
       'Import/export your presets as a single file.',
+      'Improved system input/output restore on stop.',
       'New Enhancer effect for quick sonic polish.',
       'Preset list actions and hover polish.'
     ],
@@ -26,7 +27,7 @@ const RELEASES: Release[] = [
   },
   {
     version: '1.0.0',
-    date: '2025-02-01',
+    date: '2026-01-21',
     summary: 'Initial public release.',
     highlights: [
       'System-wide audio shaping with stable routing.',

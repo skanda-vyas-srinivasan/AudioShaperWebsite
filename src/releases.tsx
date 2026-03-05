@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ArrowLeft, Download } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
 import './index.css';
 
@@ -9,10 +9,20 @@ type Release = {
   date: string;
   summary: string;
   highlights: string[];
-  downloadUrl: string;
 };
 
 const RELEASES: Release[] = [
+  {
+    version: '1.1.0',
+    date: '2026-03-05',
+    summary: 'Plugin support and streamlined header controls.',
+    highlights: [
+      'Audio Unit (AU) plugins now supported in the effects tray.',
+      'Recording is always available from the header.',
+      'Limiter is always-on for safer output.',
+      'Tutorial updated with a new Record step.'
+    ],
+  },
   {
     version: '1.0.1',
     date: '2026-01-28',
@@ -22,8 +32,7 @@ const RELEASES: Release[] = [
       'Improved system input/output restore on stop.',
       'New Enhancer effect for quick sonic polish.',
       'Preset list actions and hover polish.'
-    ],
-    downloadUrl: '/Sonexis.dmg'
+    ]
   },
   {
     version: '1.0.0',
@@ -33,8 +42,7 @@ const RELEASES: Release[] = [
       'System-wide audio shaping with stable routing.',
       'Effect canvas for building custom chains.',
       'Low-latency monitoring for real-time tweaks.'
-    ],
-    downloadUrl: '/Sonexis.dmg'
+    ]
   }
 ];
 
@@ -51,14 +59,14 @@ function ReleasesPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Sonexis
           </a>
-          <div className="text-sm font-semibold uppercase tracking-widest text-[#6E6E8F]">All Releases</div>
+          <div className="text-sm font-semibold uppercase tracking-widest text-[#6E6E8F]">Release Log</div>
         </div>
       </header>
 
       <main className="relative z-10 px-6 pb-24 pt-20">
         <div className="mx-auto max-w-5xl">
           <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">Past Releases</h1>
+            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">Release Log</h1>
           </div>
 
           <div className="grid gap-6">
@@ -73,13 +81,6 @@ function ReleasesPage() {
                     <div className="mt-2 text-2xl font-semibold text-white">{release.summary}</div>
                     <div className="mt-2 text-sm text-[#6E6E8F]">Released {release.date}</div>
                   </div>
-                  <a
-                    href={release.downloadUrl}
-                    className="inline-flex items-center gap-2 rounded-full border border-[#34344A] bg-[#12121C] px-5 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-[#6A6A8A]"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </a>
                 </div>
                 <div className="mt-6 grid gap-3 text-sm text-[#B8B8D1]">
                   {release.highlights.map((highlight) => (

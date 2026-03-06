@@ -533,8 +533,12 @@ export default function App() {
                       macOS Installer
                     </div>
                     <div className="mt-1 text-sm text-[#6E6E8F]">
-                      Version 1.0.1
+                      Version 1.1.0
                       {downloadCount !== null && <span className="ml-2">• Total downloads: {downloadCount.toLocaleString()}</span>}
+                    </div>
+                    <div className="mt-3 text-xs text-[#8B8BA3]">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B8B8D1]">What's New</div>
+                      <div className="mt-1">AU plugin support, always-on soft limiter, recording from the header, and streamlined header controls.</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -547,12 +551,13 @@ export default function App() {
                   </div>
                 </div>
               </motion.a>
+
               <motion.div variants={fadeInUp} className="mt-6 text-center">
                 <a
                   href="/releases.html"
                   className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8B8BA3] transition-colors hover:text-white"
                 >
-                  All Releases
+                  Release Log
                 </a>
               </motion.div>
 

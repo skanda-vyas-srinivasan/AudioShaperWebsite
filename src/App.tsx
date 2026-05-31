@@ -83,38 +83,12 @@ const EFFECTS = [
   { name: 'Resampling', description: 'Pitch and speed shift by resampling', icon: RefreshCw },
 ];
 
-const FAQ_ITEMS = [
-  {
-    question: 'Will Sonexis work with Spotify, Netflix, YouTube, or Apple Music?',
-    answer:
-      'Yes. Sonexis is system-wide and processes anything that plays audio on your Mac. If an app outputs sound, Sonexis can shape it.',
-  },
-  {
-    question: 'How does it actually work under the hood?',
-    answer:
-      'Sonexis uses a virtual audio device (BlackHole) to route system audio into the app. It applies your effects in real time, then sends the processed audio to your speakers or headphones. When you turn Sonexis off, routing returns to normal.',
-  },
-  {
-    question: 'Do I need BlackHole to use Sonexis?',
-    answer:
-      'Yes. BlackHole is required for system-wide audio on macOS. Sonexis includes the installer and guides you through setup.',
-  },
-  {
-    question: 'Is there noticeable latency?',
-    answer:
-      'Latency is low for normal listening. The exact amount depends on your hardware and effect chain.',
-  },
-];
-
 export default function App() {
   const heroRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLDivElement>(null);
   const effectsWrapRef = useRef<HTMLDivElement>(null);
-  const faqRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
   const [activeVideo, setActiveVideo] = useState(FEATURE_VIDEOS[0]);
-  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
-  const [showAllFaqs, setShowAllFaqs] = useState(false);
   const activeVideoRef = useRef<HTMLVideoElement>(null);
   const heroInView = useInView(heroRef, { amount: 0.6 });
   const heroWasInView = useRef(false);
@@ -217,7 +191,6 @@ export default function App() {
         onHero={() => scrollTo(heroRef)}
         onFeatures={() => scrollTo(videoRef)}
         onEffects={() => scrollTo(effectsWrapRef)}
-        onFaq={() => scrollTo(faqRef)}
         onDownload={() => scrollTo(downloadRef)}
       />
       
@@ -371,131 +344,6 @@ export default function App() {
         <div ref={effectsWrapRef} className="relative z-10">
           <EffectsCarousel key={`effects-${resetKey}`} />
         </div>
-
-        {/* FAQ Section */}
-        <motion.section
-          ref={faqRef}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={staggerContainer}
-          className="relative py-24 px-6"
-          key={`faq-${resetKey}`}
-        >
-          <motion.div variants={fadeInUp} className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="text-3xl font-bold text-white">FAQ</h2>
-              <p className="text-[#B8B8D1] mt-2">
-                Quick answers about system-wide audio effects on macOS.
-              </p>
-            </div>
-            <motion.div className="grid gap-4" layout>
-              {FAQ_ITEMS.slice(0, 3).map((item, index) => {
-                const isOpen = openFaqIndex === index;
-                return (
-                  <motion.div
-                    key={item.question}
-                    className="rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6"
-                    layout
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaqIndex(isOpen ? null : index)}
-                      className="w-full text-left text-white font-semibold flex items-center justify-between gap-4"
-                    >
-                      <span>{item.question}</span>
-                      <ChevronDown
-                        className={`h-4 w-4 text-[#B8B8D1] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-                      />
-                    </button>
-                    <AnimatePresence initial={false}>
-                      {isOpen && (
-                        <motion.div
-                          key="content"
-                          initial={{ height: 0, opacity: 0, y: 6 }}
-                          animate={{ height: 'auto', opacity: 1, y: 0 }}
-                          exit={{ height: 0, opacity: 0, y: 6 }}
-                          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                          className="overflow-hidden"
-                        >
-                          <p className="mt-3 text-sm text-[#B8B8D1] leading-relaxed">
-                            {item.answer}
-                          </p>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                );
-              })}
-              <AnimatePresence initial={false} mode="popLayout">
-                {showAllFaqs && FAQ_ITEMS.slice(3).map((item, index) => {
-                  const actualIndex = index + 3;
-                  const isOpen = openFaqIndex === actualIndex;
-                  return (
-                    <motion.div
-                      key={item.question}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 8 }}
-                      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                      className="rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6"
-                      layout
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setOpenFaqIndex(isOpen ? null : actualIndex)}
-                        className="w-full text-left text-white font-semibold flex items-center justify-between gap-4"
-                      >
-                        <span>{item.question}</span>
-                        <ChevronDown
-                          className={`h-4 w-4 text-[#B8B8D1] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-                      <AnimatePresence initial={false}>
-                        {isOpen && (
-                          <motion.div
-                            key="content"
-                            initial={{ height: 0, opacity: 0, y: 6 }}
-                            animate={{ height: 'auto', opacity: 1, y: 0 }}
-                            exit={{ height: 0, opacity: 0, y: 6 }}
-                            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                            className="overflow-hidden"
-                          >
-                            <p className="mt-3 text-sm text-[#B8B8D1] leading-relaxed">
-                              {item.answer}
-                            </p>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
-            {FAQ_ITEMS.length > 3 && (
-              <motion.div
-                className="mt-6 text-center"
-                layout
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAllFaqs((prev) => !prev);
-                    if (showAllFaqs && openFaqIndex !== null && openFaqIndex >= 3) {
-                      setOpenFaqIndex(null);
-                    }
-                  }}
-                  className="text-sm font-medium text-[#9A9AA0] transition-colors hover:text-[#E5E5E7] hover:underline hover:underline-offset-4"
-                >
-                  {showAllFaqs ? 'Show fewer' : 'Show more'}
-                </button>
-              </motion.div>
-            )}
-          </motion.div>
-        </motion.section>
 
         {/* Download Section */}
         <motion.section

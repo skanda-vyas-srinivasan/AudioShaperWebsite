@@ -4,11 +4,10 @@ type NavHeaderProps = {
   onHero: () => void;
   onFeatures: () => void;
   onEffects: () => void;
-  onFaq: () => void;
   onDownload: () => void;
 };
 
-export function NavHeader({ onHero, onFeatures, onEffects, onFaq, onDownload }: NavHeaderProps) {
+export function NavHeader({ onHero, onFeatures, onEffects, onDownload }: NavHeaderProps) {
   return (
     <header className="fixed top-0 z-50 w-full border-b border-[#1F1F3D] bg-[#0A0A0F]/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
@@ -34,13 +33,6 @@ export function NavHeader({ onHero, onFeatures, onEffects, onFaq, onDownload }: 
             className="text-[#B8B8D1] transition-colors hover:text-[#00F5FF]"
           >
             Effects
-          </button>
-          <button
-            type="button"
-            onClick={onFaq}
-            className="text-[#B8B8D1] transition-colors hover:text-[#00F5FF]"
-          >
-            FAQ
           </button>
           <button
             type="button"

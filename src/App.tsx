@@ -368,12 +368,8 @@ export default function App() {
                 variants={fadeInUp}
                 href="/Sonexis.dmg"
                 onClick={handleDownload}
-                className="group relative block w-full overflow-hidden rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6 transition-all duration-300 hover:border-[#5A5A7A]"
+                className="group relative block w-full rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6 text-[#B8B8D1] transition-all duration-300 hover:border-[#5A5A7A] hover:text-white"
               >
-                <div className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.08),transparent_55%)]" />
-                  <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
-                </div>
                 <div className="relative flex items-center justify-between">
                   <div className="text-left">
                     <div className="text-sm uppercase tracking-[0.24em] text-[#8B8BA3]">Download</div>
@@ -390,11 +386,11 @@ export default function App() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B8BA3]">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B8BA3] transition-colors group-hover:text-white">
                       .dmg
                     </div>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#34344A] bg-[#12121C] transition-all duration-300 group-hover:border-[#6A6A8A] group-hover:bg-[#171725]">
-                      <Download className="h-5 w-5 text-white" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#34344A] bg-[#12121C] transition-all duration-300 group-hover:border-[#5A5A7A]">
+                      <Download className="h-5 w-5 text-[#B8B8D1] transition-colors group-hover:text-white" />
                     </div>
                   </div>
                 </div>

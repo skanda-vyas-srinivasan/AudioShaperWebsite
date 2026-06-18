@@ -188,7 +188,6 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
       <NavHeader
-        onHero={() => scrollTo(heroRef)}
         onFeatures={() => scrollTo(videoRef)}
         onEffects={() => scrollTo(effectsWrapRef)}
         onDownload={() => scrollTo(downloadRef)}

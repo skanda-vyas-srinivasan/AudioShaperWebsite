@@ -419,7 +419,7 @@ export default function App() {
                     </div>
                     <div className="mt-3 text-xs text-[#747789]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C5C8D8]">What's New</div>
-                      <div className="mt-1">Redesigned effect tray, Signature effects, cleaner plugin rows, and faster favorites/search.</div>
+                      <div className="mt-1">An all-new Audio Engine, an all-new Sonexis.</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 
 export const NodeBlock = ({ title, type, x, y, delay = 0 }: any) => {
   const colors = {
-    bass: { border: '#00F5FF', fill: '#007C88' },
-    reverb: { border: '#FF006E', fill: '#7A1F4A' },
+    bass: { border: '#20F4FF', fill: '#007C88' },
+    reverb: { border: '#FF2D95', fill: '#7A1F4A' },
     clarity: { border: '#8B3DFF', fill: '#3A0B73' },
   };
   
@@ -59,7 +59,7 @@ export const Wire = ({ start, end, delay = 0.5 }: any) => {
              <motion.path
                 d={path}
                 fill="none"
-                stroke="#00F5FF"
+                stroke="#20F4FF"
                 strokeWidth="2"
                 initial={{ pathLength: 0, opacity: 0 }}
                 animate={{ pathLength: 1, opacity: 1 }}

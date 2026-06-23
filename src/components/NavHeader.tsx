@@ -13,21 +13,21 @@ export function NavHeader({ onFeatures, onEffects, onDownload }: NavHeaderProps)
         <button
           type="button"
           onClick={onFeatures}
-          className="text-[#B8B8D1] transition-colors hover:text-[#00F5FF]"
+          className="text-[#C5C8D8] transition-colors hover:text-[#20F4FF]"
         >
           Features
         </button>
         <button
           type="button"
           onClick={onEffects}
-          className="text-[#B8B8D1] transition-colors hover:text-[#00F5FF]"
+          className="text-[#C5C8D8] transition-colors hover:text-[#20F4FF]"
         >
           Effects
         </button>
         <button
           type="button"
           onClick={onDownload}
-          className="text-[#B8B8D1] transition-colors hover:text-[#00F5FF]"
+          className="text-[#C5C8D8] transition-colors hover:text-[#20F4FF]"
         >
           Download
         </button>

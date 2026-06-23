@@ -35,6 +35,7 @@ const FEATURE_VIDEOS = [
     title: 'Automatic Wiring',
     desc: 'Snap effects into a chain effortlessly. We handle the signal flow.',
     src: '/videos/AutoTrim.mp4',
+    accent: '#20F4FF',
     icon: <Zap className="w-5 h-5" />
   },
   {
@@ -42,6 +43,7 @@ const FEATURE_VIDEOS = [
     title: 'Manual Control',
     desc: 'Design complex, custom parallel paths for total sonic control.',
     src: '/videos/RegManualTrim.mp4',
+    accent: '#FF2D95',
     icon: <Settings className="w-5 h-5" />
   },
   {
@@ -49,6 +51,7 @@ const FEATURE_VIDEOS = [
     title: 'Dual Mono Mode',
     desc: 'Separate Left and Right channel processing for independent shaping.',
     src: '/videos/DualTrim.mp4',
+    accent: '#D66BFF',
     icon: <Layers className="w-5 h-5" />
   },
   {
@@ -56,31 +59,33 @@ const FEATURE_VIDEOS = [
     title: 'Presets & Flow',
     desc: 'Save your favorite chains and switch between them instantly.',
     src: '/videos/PresetTrim.mp4',
+    accent: '#FFD54A',
     icon: <Repeat className="w-5 h-5" />
   }
 ];
 
-// All 19 effects from AudioShaper - exact names and descriptions
+// Current Sonexis built-in effects tray order.
 const EFFECTS = [
+  { name: 'Night Drive', description: 'Dark, wide, bass-forward color for late-night listening', icon: Disc },
+  { name: 'Chrome Punch', description: 'Adds impact, attack, and tight low-end body', icon: Zap },
+  { name: 'Midnight Glow', description: 'Smooths harsh edges with warm, gentle loudness', icon: Circle },
+  { name: 'Afterglow', description: 'Adds air, stereo shimmer, and a short spacious tail', icon: Sparkles },
   { name: 'Bass Boost', description: 'Makes low frequencies more powerful', icon: Volume2 },
   { name: 'Enhancer', description: 'Adds clarity, warmth, and punch in one step', icon: Flame },
   { name: 'Clarity', description: 'Makes voices and instruments clearer', icon: Sparkles },
-  { name: 'Reverb', description: 'Adds space and depth', icon: Building2 },
-  { name: 'Soft Compression', description: 'Evens out quiet and loud parts', icon: Activity },
-  { name: 'Stereo Widening', description: 'Makes sound feel wider and more spacious', icon: ArrowLeftRight },
-  { name: 'Pitch', description: 'High-quality pitch shift', icon: Music2 },
   { name: 'Simple EQ', description: 'Adjust bass, middle, and treble', icon: SlidersHorizontal },
-  { name: '10-Band EQ', description: 'Fine-tune 10 frequency bands', icon: SlidersHorizontal },
-  { name: 'De-Mud', description: 'Removes muddiness and boxiness', icon: Zap },
+  { name: 'Pitch (Rubber Band)', description: 'High-quality pitch shift', icon: Music2 },
+  { name: 'Reverb', description: 'Adds space and depth', icon: Building2 },
+  { name: 'Stereo Widening', description: 'Makes sound feel wider and more spacious', icon: ArrowLeftRight },
   { name: 'Delay', description: 'Repeating echoes and rhythmic delays', icon: RefreshCw },
-  { name: 'Distortion', description: 'Adds warmth, grit, and harmonic saturation', icon: AudioWaveform },
   { name: 'Tremolo', description: 'Pulsing volume modulation', icon: AudioWaveform },
+  { name: 'Auto Pan', description: 'Moves sound left and right', icon: ArrowLeftRight },
   { name: 'Chorus', description: 'Thickens sound with lush modulation', icon: CircleDot },
   { name: 'Phaser', description: 'Swirling, sweeping movement', icon: Circle },
   { name: 'Flanger', description: 'Jet-like sweeping comb filter', icon: AudioWaveform },
+  { name: 'Amp', description: 'Adds preamp drive and output gain', icon: Settings },
   { name: 'Bitcrusher', description: 'Retro digital grit and crunch', icon: Grid3X3 },
   { name: 'Tape Saturation', description: 'Warm, smooth analog saturation', icon: Disc },
-  { name: 'Resampling', description: 'Pitch and speed shift by resampling', icon: RefreshCw },
 ];
 
 export default function App() {
@@ -119,12 +124,21 @@ export default function App() {
   });
   const effectsBlackOpacity = useTransform(
     effectsProgress,
-    [0, 0.3, 0.7, 1],
+    [0, 0.42, 0.72, 1],
     [0, 1, 1, 0]
   );
 
   const scrollTo = (ref: React.RefObject<HTMLDivElement>) => {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+  const scrollToFeatureShowcase = () => {
+    if (!videoRef.current) return;
+    const sectionTop = videoRef.current.getBoundingClientRect().top + window.scrollY;
+
+    window.scrollTo({
+      top: sectionTop,
+      behavior: 'smooth',
+    });
   };
 
   // Speed up videos
@@ -186,16 +200,16 @@ export default function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] text-white font-sans selection:bg-[#00F5FF]/30 overflow-x-hidden">
+    <div className="min-h-screen bg-[#030307] text-white font-sans selection:bg-[#20F4FF]/30 overflow-x-hidden">
       <NavHeader
-        onFeatures={() => scrollTo(videoRef)}
+        onFeatures={scrollToFeatureShowcase}
         onEffects={() => scrollTo(effectsWrapRef)}
         onDownload={() => scrollTo(downloadRef)}
       />
       
       <BackgroundAnimation />
       <motion.div
-        className="fixed inset-0 z-[1] pointer-events-none bg-black"
+        className="fixed inset-0 z-[1] pointer-events-none bg-[#030307]"
         style={{ opacity: effectsBlackOpacity }}
       />
 
@@ -207,21 +221,21 @@ export default function App() {
           <motion.h1 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-5xl md:text-6xl font-black tracking-tight text-[#FF006E]"
-            style={{ textShadow: '0 0 20px rgba(255, 0, 110, 0.6)' }}>
+            className="text-5xl md:text-6xl font-black tracking-tight text-[#FF2D95]"
+            style={{ textShadow: '0 0 20px rgba(255, 45, 149, 0.6)' }}>
             Sonexis
           </motion.h1>
           <motion.p 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className="text-[#B8B8D1] text-lg font-medium tracking-wide">
+            className="text-[#C5C8D8] text-lg font-medium tracking-wide">
             Shape your system audio in real time
           </motion.p>
         </div>
 
         {/* Footer Tagline */}
-        <div className="absolute inset-x-0 bottom-6 z-10 text-center text-[#6E6E8F] text-sm font-medium opacity-80">
+        <div className="absolute inset-x-0 bottom-6 z-10 text-center text-[#747789] text-sm font-medium opacity-80">
           Made by Skanda Vyas Srinivasan
         </div>
 
@@ -232,10 +246,10 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 8 }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-x-0 bottom-14 z-10 flex flex-col items-center text-[10px] font-semibold uppercase tracking-[0.3em] text-[#6E6E8F]"
+              className="absolute inset-x-0 bottom-14 z-10 flex flex-col items-center text-[10px] font-semibold uppercase tracking-[0.3em] text-[#747789]"
             >
               <span>Scroll Down</span>
-              <ChevronDown className="mt-2 h-4 w-4 text-[#6E6E8F]" />
+              <ChevronDown className="mt-2 h-4 w-4 text-[#747789]" />
             </motion.div>
           )}
         </AnimatePresence>
@@ -253,10 +267,10 @@ export default function App() {
           className="relative z-10 px-6 pt-10 pb-16"
         >
           <div className="max-w-3xl mx-auto text-center">
-            <div className="text-xs font-semibold tracking-[0.3em] text-[#6E6E8F] uppercase mb-4">
+            <div className="text-xs font-semibold tracking-[0.3em] text-[#747789] uppercase mb-4">
               What It Does
             </div>
-            <p className="text-sm md:text-base text-[#B8B8D1]">
+            <p className="text-sm md:text-base text-[#C5C8D8]">
               Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
               chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
               stable, low-latency routing.
@@ -271,69 +285,93 @@ export default function App() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
           variants={staggerContainer}
-          className="relative scroll-mt-24 py-32 px-6"
+          className="relative scroll-mt-24 overflow-hidden px-6 py-28 md:py-36"
           key={`feature-${resetKey}`}
         >
-          {/* Background handled by global animation for a seamless transition from hero */}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,3,7,0)_0%,rgba(8,8,18,0.84)_45%,rgba(3,3,7,0)_100%)] pointer-events-none" />
+
           <div className="relative z-10 max-w-6xl mx-auto">
-            <motion.div variants={fadeInUp} className="text-center mb-16">
-              <h2 className="text-3xl font-black text-white mb-4">
-                Feature Showcase
-              </h2>
-              <p className="text-[#B8B8D1] max-w-2xl mx-auto">
-                Explore the different modes of Sonexis, from simple automatic chains to complex manual routing.
-              </p>
+            <motion.div
+              variants={fadeInUp}
+              className="mb-10 max-w-3xl md:mb-12"
+            >
+              <div>
+                <h2 className="text-4xl font-black tracking-tight text-white md:text-5xl">
+                  Feature Showcase
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-[#C5C8D8] md:text-base">
+                  Explore the different modes of Sonexis, from simple automatic chains to complex manual routing.
+                </p>
+              </div>
             </motion.div>
 
-            <motion.div variants={fadeInUp} className="grid lg:grid-cols-[300px_1fr] gap-8 items-start">
-              {/* Video Navigation Tabs */}
-              <div className="flex flex-col gap-3">
-                {FEATURE_VIDEOS.map((video) => (
-                  <motion.button
-                    key={video.id}
-                    variants={fadeInUp}
-                    onClick={() => setActiveVideo(video)}
-                    className={`flex flex-col items-start p-4 rounded-xl border transition-all text-left ${
-                      activeVideo.id === video.id
-                        ? 'bg-[#1A0B2E] border-[#FF006E] shadow-[0_0_15px_rgba(255,0,110,0.2)]'
-                        : 'bg-[#0F0F16]/80 border-[#1F1F3D] hover:border-[#B8B8D1]/30'
-                    }`}
-                  >
-                    <div className={`flex items-center gap-3 font-bold text-sm uppercase tracking-wider mb-1 ${
-                      activeVideo.id === video.id ? 'text-[#FF006E]' : 'text-[#B8B8D1]'
-                    }`}>
-                      {video.icon}
-                      {video.title}
-                    </div>
-                    <div className="text-xs text-[#6E6E8F] leading-relaxed">
-                      {video.desc}
-                    </div>
-                  </motion.button>
-                ))}
+            <motion.div variants={fadeInUp} className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-start">
+              <div
+                className="relative overflow-hidden rounded-[24px] border border-[#242435] bg-[#030307] shadow-[0_24px_80px_rgba(0,0,0,0.44)]"
+                style={{
+                  boxShadow: `0 0 0 1px rgba(${hexToRgb(activeVideo.accent)}, 0.18), 0 30px 100px rgba(0,0,0,0.5), 0 0 70px rgba(${hexToRgb(activeVideo.accent)}, 0.16)`,
+                }}
+              >
+                <div className="relative aspect-video">
+                  <AnimatePresence mode="wait">
+                    <motion.video
+                      ref={activeVideoRef}
+                      key={activeVideo.id}
+                      initial={{ opacity: 0, scale: 1.012 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.992 }}
+                      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                      src={activeVideo.src}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="auto"
+                      onLoadedData={(e) => {
+                        e.currentTarget.playbackRate = 1.5;
+                      }}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </AnimatePresence>
+                </div>
               </div>
 
-              {/* Video Display */}
-              <div className="aspect-video w-full rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] relative overflow-hidden shadow-[0_0_60px_rgba(114,9,183,0.15)]">
-                <AnimatePresence mode="wait">
-                  <motion.video
-                    ref={activeVideoRef}
-                    key={activeVideo.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    src={activeVideo.src}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="auto"
-                    onLoadedData={(e) => {
-                      e.currentTarget.playbackRate = 1.5;
-                    }}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                </AnimatePresence>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-1">
+                {FEATURE_VIDEOS.map((video) => {
+                  const isActive = activeVideo.id === video.id;
+
+                  return (
+                    <motion.button
+                      key={video.id}
+                      variants={fadeInUp}
+                      onClick={() => setActiveVideo(video)}
+                      className="group relative h-14 rounded-xl border px-3 text-left transition-all duration-300"
+                      style={{
+                        background: isActive
+                          ? `rgba(${hexToRgb(video.accent)}, 0.14)`
+                          : 'rgba(16,16,28,0.78)',
+                        borderColor: isActive ? video.accent : '#242435',
+                        boxShadow: isActive ? `0 0 24px rgba(${hexToRgb(video.accent)}, 0.18)` : 'none',
+                      }}
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-all duration-300"
+                          style={{
+                            color: isActive ? video.accent : '#C5C8D8',
+                            borderColor: isActive ? video.accent : '#343449',
+                            backgroundColor: isActive ? `rgba(${hexToRgb(video.accent)}, 0.10)` : 'rgba(16,16,28,0.82)',
+                          }}
+                        >
+                          {video.icon}
+                        </div>
+                        <span className="truncate text-sm font-black text-white">
+                          {video.title}
+                        </span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
               </div>
             </motion.div>
           </div>
@@ -358,8 +396,8 @@ export default function App() {
             <h2 className="text-3xl font-bold text-white mb-4">
               Get Sonexis
             </h2>
-            <p className="text-[#B8B8D1] mb-12">
-              Requires macOS 13.0+
+            <p className="text-[#C5C8D8] mb-12">
+              Requires macOS 14.4+
             </p>
 
             <motion.div variants={staggerContainer} className="grid gap-4">
@@ -367,29 +405,29 @@ export default function App() {
                 variants={fadeInUp}
                 href="/Sonexis.dmg"
                 onClick={handleDownload}
-                className="group relative block w-full rounded-2xl border border-[#2A2A3F] bg-[#0E0E16] p-6 text-[#B8B8D1] transition-all duration-300 hover:border-[#5A5A7A] hover:text-white"
+                className="group relative block w-full rounded-2xl border border-[#242435] bg-[#060611] p-6 text-[#C5C8D8] transition-all duration-300 hover:border-[#343449] hover:text-white"
               >
                 <div className="relative flex items-center justify-between">
                   <div className="text-left">
-                    <div className="text-sm uppercase tracking-[0.24em] text-[#8B8BA3]">Download</div>
+                    <div className="text-sm uppercase tracking-[0.24em] text-[#747789]">Download</div>
                     <div className="mt-2 text-2xl font-semibold text-white transition-colors group-hover:text-[#F4F4FF]">
                       macOS Installer
                     </div>
-                    <div className="mt-1 text-sm text-[#6E6E8F]">
-                      Version 1.1.0
+                    <div className="mt-1 text-sm text-[#747789]">
+                      Version 2.0.0
                       {downloadCount !== null && <span className="ml-2">• Total downloads: {downloadCount.toLocaleString()}</span>}
                     </div>
-                    <div className="mt-3 text-xs text-[#8B8BA3]">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#B8B8D1]">What's New</div>
-                      <div className="mt-1">AU plugin support, always-on soft limiter, recording from the header, and streamlined header controls.</div>
+                    <div className="mt-3 text-xs text-[#747789]">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C5C8D8]">What's New</div>
+                      <div className="mt-1">Redesigned effect tray, Signature effects, cleaner plugin rows, and faster favorites/search.</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#8B8BA3] transition-colors group-hover:text-white">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#747789] transition-colors group-hover:text-white">
                       .dmg
                     </div>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#34344A] bg-[#12121C] transition-all duration-300 group-hover:border-[#5A5A7A]">
-                      <Download className="h-5 w-5 text-[#B8B8D1] transition-colors group-hover:text-white" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#343449] bg-[#10101C] transition-all duration-300 group-hover:border-[#C5C8D8]/60">
+                      <Download className="h-5 w-5 text-[#C5C8D8] transition-colors group-hover:text-white" />
                     </div>
                   </div>
                 </div>
@@ -398,7 +436,7 @@ export default function App() {
               <motion.div variants={fadeInUp} className="mt-6 text-center">
                 <a
                   href="/releases.html"
-                  className="text-xs font-semibold uppercase tracking-[0.22em] text-[#8B8BA3] transition-colors hover:text-white"
+                  className="text-xs font-semibold uppercase tracking-[0.22em] text-[#747789] transition-colors hover:text-white"
                 >
                   Release Log
                 </a>
@@ -410,7 +448,7 @@ export default function App() {
                   href="https://docs.google.com/forms/d/e/1FAIpQLSeXHXSNwwz63HbKqPvYYDv422RuUv8jcTd9ZxWHJSBVwMzlSg/viewform"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#2A2A3F] bg-[#0E0E16] text-[#B8B8D1] text-sm font-medium transition-all hover:border-[#5A5A7A] hover:text-white"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#242435] bg-[#060611] text-[#C5C8D8] text-sm font-medium transition-all hover:border-[#343449] hover:text-white"
                 >
                   <MessageSquare className="w-4 h-4" />
                   Send Feedback
@@ -419,7 +457,7 @@ export default function App() {
                   href="https://buymeacoffee.com/golgiwaffles"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#2A2A3F] bg-[#0E0E16] text-[#B8B8D1] text-sm font-medium transition-all hover:border-[#FFDD00] hover:text-[#FFDD00]"
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl border border-[#242435] bg-[#060611] text-[#C5C8D8] text-sm font-medium transition-all hover:border-[#FFDD00] hover:text-[#FFDD00]"
                 >
                   <Coffee className="w-4 h-4" />
                   Buy Me a Coffee
@@ -436,16 +474,16 @@ export default function App() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="py-12 px-6 bg-gradient-to-b from-transparent to-[#08080C]"
+          className="py-12 px-6 bg-gradient-to-b from-transparent to-[#030307]"
           key={`footer-${resetKey}`}
         >
-          <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#6E6E8F] text-sm md:flex-row md:items-center md:justify-between">
+          <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#747789] text-sm md:flex-row md:items-center md:justify-between">
             <div>© 2025 Sonexis. Built for audio enthusiasts.</div>
             <a
               href="https://github.com/skanda-vyas-srinivasan/Laya"
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-2 text-[#6E6E8F] hover:text-[#00F5FF] transition-colors"
+              className="flex items-center gap-2 text-[#747789] hover:text-[#20F4FF] transition-colors"
             >
               <Github className="w-4 h-4" />
               GitHub
@@ -464,7 +502,7 @@ function NeonActionButton({ icon, title, subtitle, accentColor, onClick }: any) 
       whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
       onClick={onClick}
-      className="group relative w-72 h-44 rounded-2xl bg-[#1A0B2E] border border-[#2D1B4E] flex flex-col items-center justify-center gap-3 transition-all duration-300"
+      className="group relative w-72 h-44 rounded-2xl bg-[#060611] border border-[#242435] flex flex-col items-center justify-center gap-3 transition-all duration-300"
       style={{
         boxShadow: '0 4px 20px -5px rgba(0,0,0,0.5)'
       }}
@@ -479,7 +517,7 @@ function NeonActionButton({ icon, title, subtitle, accentColor, onClick }: any) 
       />
 
       {/* Icon */}
-      <div className="relative z-10 text-[#B8B8D1] group-hover:text-white transition-colors duration-300 transform group-hover:scale-110">
+      <div className="relative z-10 text-[#C5C8D8] group-hover:text-white transition-colors duration-300 transform group-hover:scale-110">
         {React.cloneElement(icon, { size: 40, strokeWidth: 1.5 })}
       </div>
 
@@ -488,7 +526,7 @@ function NeonActionButton({ icon, title, subtitle, accentColor, onClick }: any) 
         <div className="text-lg font-bold text-white tracking-wide group-hover:text-white transition-colors">
           {title}
         </div>
-        <div className="text-xs font-medium text-[#6E6E8F] group-hover:text-[#B8B8D1] transition-colors">
+        <div className="text-xs font-medium text-[#747789] group-hover:text-[#C5C8D8] transition-colors">
           {subtitle}
         </div>
       </div>
@@ -768,19 +806,21 @@ function EffectsCarousel() {
       whileInView="visible"
       viewport={{ once: true, margin: "-100px" }}
       variants={staggerContainer}
-      className="relative py-32 overflow-hidden"
+      className="relative py-32"
     >
       <motion.div variants={fadeInUp} className="relative max-w-6xl mx-auto px-6 mb-12">
         <div className="text-center">
           <h2 className="text-3xl font-black text-white mb-4">Effects Showcase</h2>
-          <p className="text-[#B8B8D1]">19 audio effects to shape your sound.</p>
+          <p className="text-[#C5C8D8]">
+            {EFFECTS.length} built-in effects to shape your sound.
+          </p>
         </div>
       </motion.div>
 
-      <motion.div variants={fadeInUp}>
+      <motion.div variants={fadeInUp} className="relative -my-16 py-16">
       <div
         ref={carouselRef}
-        className="overflow-x-auto pb-8 scrollbar-hide cursor-grab active:cursor-grabbing select-none"
+        className="overflow-x-auto py-16 scrollbar-hide cursor-grab active:cursor-grabbing select-none"
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
@@ -814,8 +854,8 @@ function EffectsCarousel() {
                 }}
                 style={{
                   transform: isActive ? 'scale(1.08)' : 'scale(0.92)',
-                  opacity: isActive ? 1 : 0.5,
-                  filter: isActive ? 'none' : 'blur(1px)',
+                  opacity: isActive ? 1 : 0.64,
+                  filter: isActive ? 'none' : 'blur(0.35px)',
                 }}
               >
                 <NeonTileCard
@@ -833,7 +873,7 @@ function EffectsCarousel() {
 
       {/* Active effect description */}
       <motion.div variants={fadeInUp} className="relative text-center mt-8">
-        <p className="text-[#B8B8D1] text-sm">{activeEffect.description}</p>
+        <p className="text-[#C5C8D8] text-sm">{activeEffect.description}</p>
       </motion.div>
     </motion.section>
   );
@@ -852,17 +892,22 @@ function NeonTileCard({
   isActive: boolean;
 }) {
   const glowStrength = isActive ? 1 : 0.55;
-  const dimFill = '#160A2A';
+  const dimFill = '#060611';
+  const contentColor = isActive ? style.fillDark : style.text;
+  const contentShadow = isActive
+    ? '0 1px 12px rgba(255,255,255,0.34)'
+    : `0 0 12px rgba(${hexToRgb(style.fill)}, ${0.74 * glowStrength})`;
+  const longName = name.length > 15;
 
-  // Exact 110x110 square like AudioShaper - with padding for glow
   return (
-    <div className="relative w-[110px] h-[110px]" style={{ margin: '24px' }}>
+    <div className="relative h-[124px] w-[124px]" style={{ margin: '24px' }}>
       {/* Tile with all layers */}
       <div
-        className="relative w-full h-full rounded-[22px] overflow-hidden"
+        className="relative h-full w-full overflow-hidden rounded-[28px]"
         style={{
-          // Strong outer neon glow bleeding into the background
-          boxShadow: `0 0 14px rgba(${hexToRgb(style.fill)}, ${0.85 * glowStrength}), 0 0 36px rgba(${hexToRgb(style.fill)}, ${0.55 * glowStrength}), 0 0 80px rgba(${hexToRgb(style.fill)}, ${0.35 * glowStrength})`,
+          boxShadow: isActive
+            ? `0 0 0 2px rgba(${hexToRgb(style.fill)}, 0.92), 0 0 16px rgba(${hexToRgb(style.fill)}, 0.95), 0 0 44px rgba(${hexToRgb(style.fill)}, 0.62), 0 0 96px rgba(${hexToRgb(style.fill)}, 0.36)`
+            : `0 0 0 1px rgba(${hexToRgb(style.fill)}, 0.18), 0 0 18px rgba(${hexToRgb(style.fill)}, 0.16), 0 0 52px rgba(${hexToRgb(style.fill)}, 0.1)`,
         }}
       >
         {/* Layer 0: soft halo to fake projection */}
@@ -879,20 +924,22 @@ function NeonTileCard({
           className="absolute inset-0"
           style={{
             background: isActive
-              ? `linear-gradient(135deg, rgba(${hexToRgb(style.fillDark)}, 0.98) 0%, rgba(84, 26, 160, 0.95) 45%, rgba(40, 12, 80, 0.98) 100%)`
+              ? `linear-gradient(135deg, rgba(235,244,255,0.88) 0%, rgba(${hexToRgb(style.highlight)}, 0.68) 46%, rgba(130,106,220,0.76) 100%)`
               : `linear-gradient(135deg, ${dimFill} 0%, rgba(${hexToRgb(dimFill)}, 0.95) 100%)`,
           }}
         />
 
         {/* Layer 2: inner edge glow, no hard border */}
         <div
-          className="absolute inset-[3px] rounded-[19px] pointer-events-none"
+          className="absolute inset-[4px] rounded-[24px] pointer-events-none"
           style={{
-            boxShadow: `inset 0 0 12px rgba(${hexToRgb(style.fill)}, ${0.75 * glowStrength}), inset 0 0 26px rgba(${hexToRgb(style.fill)}, ${0.45 * glowStrength})`,
+            boxShadow: isActive
+              ? `inset 0 0 0 2px rgba(255,255,255,0.28), inset 0 0 18px rgba(${hexToRgb(style.fill)}, ${0.72 * glowStrength}), inset 0 0 34px rgba(${hexToRgb(style.fill)}, ${0.48 * glowStrength})`
+              : `inset 0 0 12px rgba(${hexToRgb(style.fill)}, ${0.45 * glowStrength}), inset 0 0 24px rgba(${hexToRgb(style.fill)}, ${0.26 * glowStrength})`,
           }}
         />
         <div
-          className="absolute inset-[1px] rounded-[21px] pointer-events-none"
+          className="absolute inset-[1px] rounded-[27px] pointer-events-none"
           style={{
             boxShadow: `inset 0 0 6px rgba(${hexToRgb(style.fill)}, ${0.7 * glowStrength})`,
           }}
@@ -900,9 +947,11 @@ function NeonTileCard({
 
         {/* Layer 3: top highlight */}
         <div
-          className="absolute inset-[6px] rounded-[16px] pointer-events-none"
+          className="absolute inset-[8px] rounded-[20px] pointer-events-none"
           style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, transparent 100%)',
+            background: isActive
+              ? 'linear-gradient(135deg, rgba(255,255,255,0.44) 0%, rgba(255,255,255,0.12) 48%, transparent 100%)'
+              : 'linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, transparent 100%)',
             mixBlendMode: 'screen',
           }}
         />
@@ -936,21 +985,28 @@ function NeonTileCard({
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center justify-center h-full px-[6px]">
           <div
-            className="mb-[6px] transition-all duration-300"
+            className="mb-[10px] transition-all duration-300"
             style={{
-              color: style.text,
-              filter: `drop-shadow(0 0 10px rgba(${hexToRgb(style.fill)}, ${0.85 * glowStrength}))`,
+              color: contentColor,
+              filter: isActive
+                ? 'drop-shadow(0 1px 8px rgba(255,255,255,0.36))'
+                : `drop-shadow(0 0 10px rgba(${hexToRgb(style.fill)}, ${0.9 * glowStrength}))`,
             }}
           >
-            {icon}
+            {React.isValidElement(icon)
+              ? React.cloneElement(icon as React.ReactElement<{ className?: string }>, {
+                  className: 'h-8 w-8',
+                })
+              : icon}
           </div>
 
           <div
-            className="text-[10px] font-semibold uppercase text-center leading-tight transition-all duration-300"
+            className="max-w-[108px] font-black uppercase text-center leading-[1.12] transition-all duration-300"
             style={{
-              letterSpacing: '1.6px',
-              color: style.text,
-              textShadow: `0 0 14px rgba(${hexToRgb(style.fill)}, ${0.7 * glowStrength})`,
+              fontSize: longName ? '10.5px' : '12px',
+              letterSpacing: longName ? '0.07em' : isActive ? '0.13em' : '0.16em',
+              color: contentColor,
+              textShadow: contentShadow,
             }}
           >
             {name}

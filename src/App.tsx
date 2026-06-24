@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useInView } from 'framer-motion';
 import {
-  Download, Monitor, Zap, Settings, Repeat, Layers, Github,
+  Monitor, Zap, Settings, Repeat, Layers, Github,
   Volume2, Sparkles, Building2, Activity, ArrowLeftRight, Rabbit,
   Music2, SlidersHorizontal, Grid3X3, Timer, RefreshCw,
   AudioWaveform, CircleDot, Circle, Disc, ChevronDown, Flame,
@@ -221,8 +221,7 @@ export default function App() {
           <motion.h1 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="text-5xl md:text-6xl font-black tracking-tight text-[#FF2D95]"
-            style={{ textShadow: '0 0 20px rgba(255, 45, 149, 0.6)' }}>
+            className="text-5xl md:text-6xl font-black tracking-tight text-[#FF2D95]">
             Sonexis
           </motion.h1>
           <motion.p 
@@ -425,9 +424,6 @@ export default function App() {
                   <div className="flex items-center gap-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-[#747789] transition-colors group-hover:text-white">
                       .dmg
-                    </div>
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full border border-[#343449] bg-[#10101C] transition-all duration-300 group-hover:border-[#C5C8D8]/60">
-                      <Download className="h-5 w-5 text-[#C5C8D8] transition-colors group-hover:text-white" />
                     </div>
                   </div>
                 </div>

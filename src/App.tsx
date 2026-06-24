@@ -266,9 +266,6 @@ export default function App() {
           className="relative z-10 px-6 pt-10 pb-16"
         >
           <div className="max-w-3xl mx-auto text-center">
-            <div className="text-xs font-semibold tracking-[0.3em] text-[#747789] uppercase mb-4">
-              What It Does
-            </div>
             <p className="text-sm md:text-base text-[#C5C8D8]">
               Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
               chains on a simple canvas, choose the effects you want, and control your Mac’s sound with

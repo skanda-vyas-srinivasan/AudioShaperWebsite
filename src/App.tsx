@@ -114,7 +114,7 @@ export default function App() {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
-            className="mt-5 rounded-full border border-[#242435] bg-[#060611]/80 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C5C8D8]"
+            className="mt-5 border-t border-[#242435] pt-3 text-center text-[11px] font-medium uppercase tracking-[0.16em] text-[#747789]"
           >
             Website in progress - Projected completion: June 30, 2026
           </motion.div>

@@ -4,7 +4,24 @@ import { resolve } from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 250,
+    },
+  },
+  plugins: [
+    react(),
+    {
+      name: 'local-download-counter',
+      configureServer(server) {
+        server.middlewares.use('/api/downloads', (req, res) => {
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ count: 0 }));
+        });
+      },
+    },
+  ],
   build: {
     rollupOptions: {
       input: {

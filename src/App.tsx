@@ -22,9 +22,21 @@ const staggerContainer = {
   }
 };
 
+const videoReveal = {
+  hidden: { opacity: 0, y: 38, scale: 0.985, filter: 'blur(6px)' },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: { duration: 1.35, ease: [0.16, 1, 0.3, 1] }
+  }
+};
+
 export default function App() {
   const heroRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
+  const isLocalDev = import.meta.env.DEV;
   const heroInView = useInView(heroRef, { amount: 0.6 });
   const heroWasInView = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -34,13 +46,17 @@ export default function App() {
 
   // Fetch download count on mount
   useEffect(() => {
+    if (isLocalDev) return;
+
     fetch('/api/downloads')
       .then(res => res.json())
       .then(data => setDownloadCount(data.count))
       .catch(() => {});
-  }, []);
+  }, [isLocalDev]);
 
   const handleDownload = () => {
+    if (isLocalDev) return;
+
     // Increment counter
     fetch('/api/downloads', { method: 'POST' })
       .then(res => res.json())
@@ -110,14 +126,6 @@ export default function App() {
             className="text-[#C5C8D8] text-lg font-medium tracking-wide">
             Shape your system audio in real time
           </motion.p>
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="mt-5 border-t border-[#242435] pt-3 text-center text-[11px] font-medium uppercase tracking-[0.16em] text-[#747789]"
-          >
-            Website in progress - Projected completion: June 30, 2026
-          </motion.div>
         </div>
 
         {/* Footer Tagline */}
@@ -144,20 +152,59 @@ export default function App() {
 
       {/* 2. SCROLL CONTENT - Clean, minimal */}
       <div className="relative z-10">
-        {/* What It Does */}
+        {/* Visual Tour */}
         <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
-          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="relative z-10 px-6 pt-10 pb-16"
+          className="relative z-10 px-6 pt-10 pb-16 md:pb-20"
         >
-          <div className="max-w-3xl mx-auto text-center">
-            <p className="text-sm md:text-base text-[#C5C8D8]">
-              Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
-              chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
-              stable, low-latency routing.
-            </p>
+          <div className="mx-auto max-w-6xl">
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.65 }}
+              variants={fadeInUp}
+              className="mx-auto mb-28 max-w-3xl text-center md:mb-36"
+            >
+              <p className="text-sm md:text-base text-[#C5C8D8]">
+                Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
+                chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
+                stable, low-latency routing.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ amount: 0.18, margin: "0px 0px 10% 0px" }}
+              variants={videoReveal}
+              className="mx-auto max-w-4xl"
+            >
+              <VideoPanel
+                src="/videos/sonexismanualchain.mp4"
+                title="Shape your Mac's sound with custom creative effect chains."
+                size="large"
+              />
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ amount: 0.18, margin: "0px 0px 10% 0px" }}
+              variants={staggerContainer}
+              className="mt-10 grid gap-6 md:grid-cols-2"
+            >
+              <motion.div variants={videoReveal}>
+                <VideoPanel
+                  src="/videos/sonexisautochain.mp4"
+                  title="Build fast with automatic wiring."
+                />
+              </motion.div>
+              <motion.div variants={videoReveal}>
+                <VideoPanel
+                  src="/videos/sonexissplitchain.mp4"
+                  title="Split left and right channels."
+                />
+              </motion.div>
+            </motion.div>
           </div>
         </motion.section>
 
@@ -269,5 +316,47 @@ export default function App() {
 
       </div>
     </div>
+  );
+}
+
+function VideoPanel({
+  src,
+  title,
+  size = 'regular',
+}: {
+  src: string;
+  title: string;
+  size?: 'large' | 'regular';
+}) {
+  return (
+    <figure className="group">
+      <div
+        className={[
+          'overflow-hidden border border-[#242435] bg-[#030307] shadow-[0_24px_80px_rgba(0,0,0,0.34)]',
+          size === 'large' ? 'rounded-xl' : 'rounded-lg',
+        ].join(' ')}
+      >
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="block w-full"
+        >
+          <source src={src} type="video/mp4" />
+        </video>
+      </div>
+      <figcaption
+        className={[
+          'border-t border-[#242435] text-[#C5C8D8]',
+          size === 'large'
+            ? 'mt-5 pt-4 text-center text-base font-medium md:text-lg'
+            : 'mt-4 pt-3 text-sm font-medium',
+        ].join(' ')}
+      >
+        {title}
+      </figcaption>
+    </figure>
   );
 }

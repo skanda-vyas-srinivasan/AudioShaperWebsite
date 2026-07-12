@@ -154,7 +154,7 @@ export default function App() {
       <div className="relative z-10">
         {/* Visual Tour */}
         <motion.section
-          className="relative z-10 px-6 pt-10 pb-16 md:pb-20"
+          className="relative z-10 px-6 pt-8 pb-14 md:pb-18"
         >
           <div className="mx-auto max-w-6xl">
             <motion.div
@@ -162,7 +162,7 @@ export default function App() {
               whileInView="visible"
               viewport={{ once: true, amount: 0.65 }}
               variants={fadeInUp}
-              className="mx-auto mb-28 max-w-3xl text-center md:mb-36"
+              className="mx-auto mb-24 max-w-3xl text-center md:mb-28"
             >
               <p className="text-sm md:text-base text-[#C5C8D8]">
                 Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
@@ -180,7 +180,7 @@ export default function App() {
             >
               <VideoPanel
                 src="/videos/sonexismanualchain.mp4"
-                title="Shape your Mac's sound with custom creative effect chains."
+                title="Customize your Mac's sound with creative effect chains."
                 size="large"
               />
             </motion.div>
@@ -190,7 +190,7 @@ export default function App() {
               whileInView="visible"
               viewport={{ amount: 0.18, margin: "0px 0px 10% 0px" }}
               variants={staggerContainer}
-              className="mt-10 grid gap-6 md:grid-cols-2"
+              className="mt-8 grid gap-5 md:grid-cols-2"
             >
               <motion.div variants={videoReveal}>
                 <VideoPanel
@@ -330,6 +330,16 @@ function VideoPanel({
 }) {
   return (
     <figure className="group">
+      <figcaption
+        className={[
+          'text-[#C5C8D8]',
+          size === 'large'
+            ? 'mb-4 text-center text-base font-medium md:text-lg'
+            : 'mb-3 text-sm font-medium',
+        ].join(' ')}
+      >
+        {title}
+      </figcaption>
       <div
         className={[
           'overflow-hidden border border-[#242435] bg-[#030307] shadow-[0_24px_80px_rgba(0,0,0,0.34)]',
@@ -347,16 +357,6 @@ function VideoPanel({
           <source src={src} type="video/mp4" />
         </video>
       </div>
-      <figcaption
-        className={[
-          'border-t border-[#242435] text-[#C5C8D8]',
-          size === 'large'
-            ? 'mt-5 pt-4 text-center text-base font-medium md:text-lg'
-            : 'mt-4 pt-3 text-sm font-medium',
-        ].join(' ')}
-      >
-        {title}
-      </figcaption>
     </figure>
   );
 }

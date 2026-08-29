@@ -13,6 +13,16 @@ type Release = {
 
 const RELEASES: Release[] = [
   {
+    version: '2.0.1',
+    date: '2026-08-27',
+    summary: 'Smoother system audio and a cleaner effects tray.',
+    highlights: [
+      'Fixed crackling caused by abrupt audio clock-drift correction.',
+      'Clock drift is now corrected with smooth interpolation to preserve waveform continuity.',
+      'Moved Signature effects to the bottom of the built-in effects list.'
+    ],
+  },
+  {
     version: '2.0.0',
     date: '2026-06-23',
     summary: 'Redesigned effect tray and plugin workflow.',

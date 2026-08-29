@@ -240,12 +240,12 @@ export default function App() {
                       macOS Installer
                     </div>
                     <div className="mt-1 text-sm text-[#747789]">
-                      Version 2.0.0
+                      Version 2.0.1
                       {downloadCount !== null && <span className="ml-2">• Total downloads: {downloadCount.toLocaleString()}</span>}
                     </div>
                     <div className="mt-3 text-xs text-[#747789]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C5C8D8]">What's New</div>
-                      <div className="mt-1">An all-new Audio Engine, an all-new Sonexis.</div>
+                      <div className="mt-1">Smoother system audio with crackle-free clock-drift correction.</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

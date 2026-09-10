@@ -3,6 +3,8 @@ export default {
   content: [
     "./index.html",
     "./releases.html",
+    "./analytics.html",
+    "./privacy.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {

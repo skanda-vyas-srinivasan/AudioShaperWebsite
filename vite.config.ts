@@ -27,6 +27,8 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, 'index.html'),
         releases: resolve(__dirname, 'releases.html'),
+        analytics: resolve(__dirname, 'analytics.html'),
+        privacy: resolve(__dirname, 'privacy.html'),
       },
     },
   },

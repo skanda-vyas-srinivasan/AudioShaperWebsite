@@ -58,7 +58,15 @@ export default function App() {
     if (isLocalDev) return;
 
     // Increment counter
-    fetch('/api/downloads', { method: 'POST' })
+    fetch('/api/downloads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        version: '2.0.1',
+        referrer: document.referrer,
+      }),
+      keepalive: true,
+    })
       .then(res => res.json())
       .then(data => setDownloadCount(data.count))
       .catch(() => {});
@@ -301,16 +309,21 @@ export default function App() {
           key={`footer-${resetKey}`}
         >
           <div className="max-w-6xl mx-auto flex flex-col gap-4 text-[#747789] text-sm md:flex-row md:items-center md:justify-between">
-            <div>© 2025 Sonexis. Built for audio enthusiasts.</div>
-            <a
-              href="https://github.com/skanda-vyas-srinivasan/Laya"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center gap-2 text-[#747789] hover:text-[#20F4FF] transition-colors"
-            >
-              <Github className="w-4 h-4" />
-              GitHub
-            </a>
+            <div>© 2026 Sonexis. Built for audio enthusiasts.</div>
+            <div className="flex items-center gap-5">
+              <a href="/privacy.html" className="text-[#747789] transition-colors hover:text-white">
+                Privacy
+              </a>
+              <a
+                href="https://github.com/skanda-vyas-srinivasan/Laya"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2 text-[#747789] hover:text-[#20F4FF] transition-colors"
+              >
+                <Github className="w-4 h-4" />
+                GitHub
+              </a>
+            </div>
           </div>
         </motion.footer>
 

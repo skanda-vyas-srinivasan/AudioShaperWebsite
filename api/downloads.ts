@@ -104,22 +104,29 @@ async function recordAnalytics(req: Request) {
   const cityLabel = [city, regionCode, country].filter((part) => part !== 'Unknown').join(', ') || 'Unknown';
   const version = typeof body.version === 'string' ? clean(body.version) : 'Unknown';
   const pipeline = redis.pipeline();
+  const dimensions = {
+    continents: continent,
+    countries: country,
+    regions: region,
+    cities: cityLabel,
+    timezones: timezone,
+    devices: classifyDevice(userAgent),
+    browsers: classifyBrowser(userAgent),
+    languages: language,
+    sources: sourceFrom(body.referrer),
+    versions: version,
+  };
 
   pipeline.incr(COUNTER_KEY);
+  pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:total`, 'downloads', 1);
   pipeline.hincrby(`${ANALYTICS_PREFIX}:days`, day, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:continents`, continent, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:countries`, country, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:regions`, region, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:cities`, cityLabel, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:timezones`, timezone, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:devices`, classifyDevice(userAgent), 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:browsers`, classifyBrowser(userAgent), 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:languages`, language, 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:sources`, sourceFrom(body.referrer), 1);
-  pipeline.hincrby(`${ANALYTICS_PREFIX}:versions`, version, 1);
+  for (const [dimension, value] of Object.entries(dimensions)) {
+    pipeline.hincrby(`${ANALYTICS_PREFIX}:${dimension}`, value, 1);
+    pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:${dimension}`, value, 1);
+  }
   if (fingerprint) {
     pipeline.pfadd(`${ANALYTICS_PREFIX}:unique`, fingerprint);
-    pipeline.pfadd(`${ANALYTICS_PREFIX}:unique:${day}`, fingerprint);
+    pipeline.pfadd(`${ANALYTICS_PREFIX}:day:${day}:unique`, fingerprint);
   }
 
   const results = await pipeline.exec();

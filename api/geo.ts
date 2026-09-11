@@ -6,6 +6,7 @@ const regionNames: Record<string, Record<string, string>> = {
   GB: { ENG: 'England', NIR: 'Northern Ireland', SCT: 'Scotland', WLS: 'Wales' },
   NL: { DR: 'Drenthe', FL: 'Flevoland', FR: 'Friesland', GE: 'Gelderland', GR: 'Groningen', LI: 'Limburg', NB: 'North Brabant', NH: 'North Holland', OV: 'Overijssel', UT: 'Utrecht', ZE: 'Zeeland', ZH: 'South Holland' },
 };
+const knownCountryCodes: Record<string, string> = { 'United States': 'US', India: 'IN', Canada: 'CA', Australia: 'AU', 'United Kingdom': 'GB', Netherlands: 'NL' };
 
 export const countryName = (code: string) => {
   if (code === 'Unknown') return code;
@@ -23,8 +24,11 @@ export const readableLocation = (dimension: string, label: string) => {
     return `${countryName(countryCode)} · ${regionName(countryCode, regionCode)}`;
   }
   if (dimension === 'cities') {
-    const legacyMatch = label.match(/^(.*), ([A-Z]{2,3}), ([A-Z]{2})$/);
-    if (legacyMatch) return `${legacyMatch[1]}, ${regionName(legacyMatch[3], legacyMatch[2])}, ${countryName(legacyMatch[3])}`;
+    const legacyMatch = label.match(/^(.*), ([A-Z]{2,3}), (.*)$/);
+    if (legacyMatch) {
+      const countryCode = /^[A-Z]{2}$/.test(legacyMatch[3]) ? legacyMatch[3] : knownCountryCodes[legacyMatch[3]];
+      if (countryCode) return `${legacyMatch[1]}, ${regionName(countryCode, legacyMatch[2])}, ${countryName(countryCode)}`;
+    }
   }
   return label;
 };

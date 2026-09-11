@@ -4,6 +4,7 @@ const regionNames: Record<string, Record<string, string>> = {
   CA: { AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick', NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', NT: 'Northwest Territories', NU: 'Nunavut', ON: 'Ontario', PE: 'Prince Edward Island', QC: 'Quebec', SK: 'Saskatchewan', YT: 'Yukon' },
   AU: { ACT: 'Australian Capital Territory', NSW: 'New South Wales', NT: 'Northern Territory', QLD: 'Queensland', SA: 'South Australia', TAS: 'Tasmania', VIC: 'Victoria', WA: 'Western Australia' },
   GB: { ENG: 'England', NIR: 'Northern Ireland', SCT: 'Scotland', WLS: 'Wales' },
+  NL: { DR: 'Drenthe', FL: 'Flevoland', FR: 'Friesland', GE: 'Gelderland', GR: 'Groningen', LI: 'Limburg', NB: 'North Brabant', NH: 'North Holland', OV: 'Overijssel', UT: 'Utrecht', ZE: 'Zeeland', ZH: 'South Holland' },
 };
 
 export const countryName = (code: string) => {

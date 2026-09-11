@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { continentName, countryName, regionName } from './geo';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -83,10 +84,12 @@ async function uniqueFingerprint(req: Request) {
 }
 
 async function recordAnalytics(req: Request) {
-  const country = clean(req.headers.get('x-vercel-ip-country'));
+  const countryCode = clean(req.headers.get('x-vercel-ip-country'));
+  const country = countryName(countryCode);
   const regionCode = clean(req.headers.get('x-vercel-ip-country-region'));
+  const region = regionName(countryCode, regionCode);
   const city = clean(req.headers.get('x-vercel-ip-city'));
-  const continent = clean(req.headers.get('x-vercel-ip-continent'));
+  const continent = continentName(clean(req.headers.get('x-vercel-ip-continent')));
   const timezone = clean(req.headers.get('x-vercel-ip-timezone'));
   const userAgent = req.headers.get('user-agent') || '';
   const language = clean(req.headers.get('accept-language')?.split(',')[0] || null);
@@ -100,14 +103,14 @@ async function recordAnalytics(req: Request) {
     // Older clients may send the POST without a JSON body.
   }
 
-  const region = country === 'Unknown' ? regionCode : `${country} · ${regionCode}`;
-  const cityLabel = [city, regionCode, country].filter((part) => part !== 'Unknown').join(', ') || 'Unknown';
+  const regionLabel = country === 'Unknown' ? region : `${country} · ${region}`;
+  const cityLabel = [city, region, country].filter((part) => part !== 'Unknown').join(', ') || 'Unknown';
   const version = typeof body.version === 'string' ? clean(body.version) : 'Unknown';
   const pipeline = redis.pipeline();
   const dimensions = {
     continents: continent,
     countries: country,
-    regions: region,
+    regions: regionLabel,
     cities: cityLabel,
     timezones: timezone,
     devices: classifyDevice(userAgent),

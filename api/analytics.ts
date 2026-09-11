@@ -1,4 +1,5 @@
 import { Redis } from '@upstash/redis';
+import { readableLocation } from './geo';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -12,9 +13,9 @@ type Dimension = typeof DIMENSIONS[number];
 type Counts = Record<string, number | string> | null;
 type CountItem = { label: string; count: number };
 
-const normalizeCounts = (counts: Counts) =>
+const normalizeCounts = (counts: Counts, dimension = '') =>
   Object.entries(counts || {})
-    .map(([label, rawCount]) => ({ label, count: Number(rawCount) || 0 }))
+    .map(([label, rawCount]) => ({ label: readableLocation(dimension, label), count: Number(rawCount) || 0 }))
     .filter((item) => item.count > 0)
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
@@ -88,7 +89,7 @@ async function loadFiltered(days: string[]) {
     filteredUnique: uniqueByDay.reduce((sum, item) => sum + item.count, 0),
     days: dailyDownloads.sort((a, b) => b.label.localeCompare(a.label)),
     uniqueByDay: uniqueByDay.sort((a, b) => b.label.localeCompare(a.label)),
-    dimensions: Object.fromEntries(DIMENSIONS.map((dimension) => [dimension, normalizeCounts(aggregate[dimension])])),
+    dimensions: Object.fromEntries(DIMENSIONS.map((dimension) => [dimension, normalizeCounts(aggregate[dimension], dimension)])),
   };
 }
 
@@ -142,7 +143,7 @@ export default async function handler(req: Request) {
         filteredUnique: Number(uniqueDownloads) || 0,
         days: normalizedDays,
         uniqueByDay: uniqueByDay.filter((item) => item.count > 0).sort((a, b) => b.label.localeCompare(a.label)),
-        dimensions: Object.fromEntries(DIMENSIONS.map((dimension, index) => [dimension, normalizeCounts(dimensionCounts[index])])),
+        dimensions: Object.fromEntries(DIMENSIONS.map((dimension, index) => [dimension, normalizeCounts(dimensionCounts[index], dimension)])),
         totalDownloads: Number(total) || 0,
       };
     }

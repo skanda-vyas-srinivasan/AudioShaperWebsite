@@ -16,6 +16,7 @@ export const regionName = (countryCode: string, code: string) => regionNames[cou
 
 export const readableLocation = (dimension: string, label: string) => {
   if (dimension === 'countries') return countryName(label);
+  if (dimension === 'continents') return continentName(label);
   if (dimension === 'regions' && label.includes(' · ')) {
     const [countryCode, regionCode] = label.split(' · ');
     return `${countryName(countryCode)} · ${regionName(countryCode, regionCode)}`;

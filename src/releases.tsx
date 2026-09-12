@@ -13,6 +13,17 @@ type Release = {
 
 const RELEASES: Release[] = [
   {
+    version: '2.1.0',
+    date: '2026-09-11',
+    summary: 'Independent effect chains for individual apps.',
+    highlights: [
+      'Create separate effect chains for running apps, each with its own graph, preset, gain settings, and enabled state, while Default still handles everything else.',
+      'Switch chains, presets, Power, and enabled state from the redesigned Sonexis menu bar.',
+      'Record now captures the combined output of every active chain into one file, instead of just the selected chain.',
+      'Revised Basics, App Chains, and Advanced Wiring tutorials, bundled starter presets, and reliability improvements to preset saving, recording, and audio start/stop.'
+    ],
+  },
+  {
     version: '2.0.1',
     date: '2026-08-27',
     summary: 'Smoother system audio and a cleaner effects tray.',

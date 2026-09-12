@@ -62,7 +62,7 @@ export default function App() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        version: '2.0.1',
+        version: '2.1.0',
         referrer: document.referrer,
       }),
       keepalive: true,
@@ -248,12 +248,12 @@ export default function App() {
                       macOS Installer
                     </div>
                     <div className="mt-1 text-sm text-[#747789]">
-                      Version 2.0.1
+                      Version 2.1.0
                       {downloadCount !== null && <span className="ml-2">• Total downloads: {downloadCount.toLocaleString()}</span>}
                     </div>
                     <div className="mt-3 text-xs text-[#747789]">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#C5C8D8]">What's New</div>
-                      <div className="mt-1">Smoother system audio with crackle-free clock-drift correction.</div>
+                      <div className="mt-1">Independent effect chains per app, menu bar controls, and combined-chain recording.</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">

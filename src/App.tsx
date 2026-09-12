@@ -172,7 +172,10 @@ export default function App() {
               variants={fadeInUp}
               className="mx-auto mb-24 max-w-3xl text-center md:mb-28"
             >
-              <p className="text-sm md:text-base text-[#C5C8D8]">
+              <h2 className="text-2xl font-bold tracking-tight text-[#FF2D95] md:text-3xl">
+                A canvas for your sound
+              </h2>
+              <p className="mt-4 text-sm leading-relaxed text-[#C5C8D8] md:text-base">
                 Sonexis is a Mac app for real-time, system-wide audio shaping. Build custom effect
                 chains on a simple canvas, choose the effects you want, and control your Mac’s sound with
                 stable, low-latency routing.
@@ -210,6 +213,39 @@ export default function App() {
                 <VideoPanel
                   src="/videos/sonexissplitchain.mp4"
                   title="Split left and right channels."
+                />
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, amount: 0.4 }}
+              variants={fadeInUp}
+              className="mx-auto mb-8 mt-24 max-w-2xl text-center"
+            >
+              <h2 className="text-2xl font-bold tracking-tight text-[#FF2D95] md:text-3xl">
+                What’s new in 2.1.0?
+              </h2>
+            </motion.div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ amount: 0.18, margin: "0px 0px 10% 0px" }}
+              variants={staggerContainer}
+              className="grid gap-5 md:grid-cols-2"
+            >
+              <motion.div variants={videoReveal}>
+                <VideoPanel
+                  src="/videos/app-chains.mp4"
+                  title="Shape each app with its own independent effect chain."
+                />
+              </motion.div>
+              <motion.div variants={videoReveal}>
+                <VideoPanel
+                  src="/videos/menu-bar-controls.mp4"
+                  title="Switch presets and control chains from the menu bar."
                 />
               </motion.div>
             </motion.div>
@@ -263,15 +299,6 @@ export default function App() {
                   </div>
                 </div>
               </motion.a>
-
-              <motion.div variants={fadeInUp} className="mt-6 text-center">
-                <a
-                  href="/releases.html"
-                  className="text-xs font-semibold uppercase tracking-[0.22em] text-[#747789] transition-colors hover:text-white"
-                >
-                  Release Log
-                </a>
-              </motion.div>
 
               {/* Feedback & Support */}
               <motion.div variants={fadeInUp} className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -348,7 +375,7 @@ function VideoPanel({
           'text-[#C5C8D8]',
           size === 'large'
             ? 'mb-4 text-center text-base font-medium md:text-lg'
-            : 'mb-3 text-sm font-medium',
+            : 'mb-3 text-base font-medium',
         ].join(' ')}
       >
         {title}

@@ -23,13 +23,12 @@ const staggerContainer = {
 };
 
 const videoReveal = {
-  hidden: { opacity: 0, y: 38, scale: 0.985, filter: 'blur(6px)' },
+  hidden: { opacity: 0, y: 38, scale: 0.985 },
   visible: {
     opacity: 1,
     y: 0,
     scale: 1,
-    filter: 'blur(0px)',
-    transition: { duration: 1.35, ease: [0.16, 1, 0.3, 1] }
+    transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
   }
 };
 
@@ -368,6 +367,34 @@ function VideoPanel({
   title: string;
   size?: 'large' | 'regular';
 }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setShouldLoad(true);
+        } else {
+          video.pause();
+        }
+      },
+      { rootMargin: '300px 0px' }
+    );
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoad || !videoRef.current) return;
+    const video = videoRef.current;
+    video.load();
+    video.play().catch(() => {});
+  }, [shouldLoad]);
+
   return (
     <figure className="group">
       <figcaption
@@ -387,14 +414,15 @@ function VideoPanel({
         ].join(' ')}
       >
         <video
+          ref={videoRef}
           autoPlay
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="none"
           className="block w-full"
         >
-          <source src={src} type="video/mp4" />
+          {shouldLoad && <source src={src} type="video/mp4" />}
         </video>
       </div>
     </figure>

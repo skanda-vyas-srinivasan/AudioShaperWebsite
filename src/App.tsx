@@ -369,6 +369,7 @@ function VideoPanel({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [shouldLoad, setShouldLoad] = useState(false);
+  const [isInView, setIsInView] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -376,6 +377,7 @@ function VideoPanel({
 
     const observer = new IntersectionObserver(
       ([entry]) => {
+        setIsInView(entry.isIntersecting);
         if (entry.isIntersecting) {
           setShouldLoad(true);
         } else {
@@ -392,8 +394,12 @@ function VideoPanel({
     if (!shouldLoad || !videoRef.current) return;
     const video = videoRef.current;
     video.load();
-    video.play().catch(() => {});
   }, [shouldLoad]);
+
+  useEffect(() => {
+    if (!shouldLoad || !isInView || !videoRef.current) return;
+    videoRef.current.play().catch(() => {});
+  }, [shouldLoad, isInView]);
 
   return (
     <figure className="group">

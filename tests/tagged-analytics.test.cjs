@@ -108,36 +108,38 @@ const admin = (query = '') => new Request(`https://sonexis.ink/api/analytics${qu
 test('each new tagged page load records a visit; React remounts do not double count', async () => {
   const storage = new Map();
   const first = browser('?ref=Resume', storage);
-  await Promise.all([first.recordTaggedVisit(), first.recordTaggedVisit()]);
+  await Promise.all([first.recordWebsiteVisit(), first.recordWebsiteVisit()]);
   assert.equal(first.requests.length, 1);
   assert.equal(JSON.parse(first.requests[0].body).tag, 'resume');
   assert.equal(first.getDownloadTag(), 'resume');
   const reloaded = browser('?ref=resume', storage);
-  await reloaded.recordTaggedVisit();
+  await reloaded.recordWebsiteVisit();
   assert.equal(reloaded.requests.length, 1);
 });
 
 test('downloads remember the tag on untagged pages and new tagged links replace it', async () => {
   const storage = new Map();
   const first = browser('?ref=resume', storage);
-  await first.recordTaggedVisit();
+  await first.recordWebsiteVisit();
   const untagged = browser('', storage);
-  await untagged.recordTaggedVisit();
-  assert.equal(untagged.requests.length, 0);
+  await untagged.recordWebsiteVisit();
+  assert.equal(untagged.requests.length, 1);
+  assert.equal(JSON.parse(untagged.requests[0].body).tag, 'resume');
   assert.equal(untagged.getDownloadTag(), 'resume');
   assert.equal(browser('?ref=portfolio', storage).getDownloadTag(), 'portfolio');
   assert.equal(browser('', storage).getDownloadTag(), 'portfolio');
   assert.equal(browser('', new Map()).getDownloadTag(), null);
 });
 
-test('blocked storage and invalid tags do not break downloads or add bogus visits', async () => {
+test('blocked storage preserves the current tag; invalid URL tags count as untagged', async () => {
   const blocked = browser('?ref=resume', new Map(), true);
-  await blocked.recordTaggedVisit();
+  await blocked.recordWebsiteVisit();
   assert.equal(blocked.getDownloadTag(), 'resume');
   for (const search of ['', '?ref=bad%20tag', '?ref=' + 'x'.repeat(65)]) {
     const page = browser(search);
-    await page.recordTaggedVisit();
-    assert.equal(page.requests.length, 0);
+    await page.recordWebsiteVisit();
+    assert.equal(page.requests.length, 1);
+    assert.equal(JSON.parse(page.requests[0].body).tag, null);
     assert.equal(page.getDownloadTag(), null);
   }
 });
@@ -152,7 +154,10 @@ test('tagged visits and downloads appear together; legacy downloads stay untagge
   const response = await handlers.analytics(admin());
   assert.equal(response.status, 200);
   const data = await response.json();
-  assert.deepEqual(data.taggedTraffic, [{ tag: 'resume', visits: 3, downloads: 1 }]);
+  assert.deepEqual(data.taggedTraffic, [
+    { tag: 'resume', visits: 3, downloads: 1 },
+    { tag: '(untagged)', visits: 0, downloads: 1 },
+  ]);
   assert.equal(data.totalDownloads, 2);
   assert.equal(data.recentEvents.filter(event => event.tag === 'resume').length, 1);
   assert.equal(data.recentEvents.filter(event => event.tag === null).length, 1);
@@ -169,15 +174,18 @@ test('date filters include visits-only and downloads-only tags, including empty 
     { tag: 'resume', visits: 7, downloads: 2 },
     { tag: 'portfolio', visits: 2, downloads: 0 },
     { tag: 'old', visits: 0, downloads: 1 },
+    { tag: '(untagged)', visits: 0, downloads: 0 },
   ]);
-  assert.deepEqual((await (await analytics(admin('?from=2026-09-01&to=2026-09-01'))).json()).taggedTraffic, []);
+  assert.deepEqual((await (await analytics(admin('?from=2026-09-01&to=2026-09-01'))).json()).taggedTraffic, [
+    { tag: '(untagged)', visits: 0, downloads: 0 },
+  ]);
 });
 
 test('visit validation and private analytics access reject invalid requests', async () => {
   const { visits, analytics } = api();
   assert.equal((await visits(new Request('https://sonexis.ink/api/visits'))).status, 405);
   assert.equal((await visits(post('visits', { tag: 'resume' }, 'https://example.com'))).status, 403);
-  for (const body of [null, {}, { tag: 'bad tag' }, { tag: 42 }, { tag: 'x'.repeat(65) }]) {
+  for (const body of [null, [], 'resume', { tag: 'bad tag' }, { tag: 42 }, { tag: 'x'.repeat(65) }]) {
     assert.equal((await visits(post('visits', body))).status, 400);
   }
   assert.equal((await visits(new Request('https://sonexis.ink/api/visits', {
@@ -186,4 +194,31 @@ test('visit validation and private analytics access reject invalid requests', as
   assert.equal((await analytics(new Request('https://sonexis.ink/api/analytics'))).status, 401);
   assert.equal((await analytics(admin('?from=2026-10-03&to=2026-10-01'))).status, 400);
   assert.equal(MemoryRedis.values.size, 0);
+});
+
+test('untagged page loads count individually without being duplicated by React remounts', async () => {
+  const storage = new Map();
+  const first = browser('', storage);
+  await Promise.all([first.recordWebsiteVisit(), first.recordWebsiteVisit()]);
+  assert.equal(first.requests.length, 1);
+  assert.equal(JSON.parse(first.requests[0].body).tag, null);
+  const second = browser('', storage);
+  await second.recordWebsiteVisit();
+  assert.equal(second.requests.length, 1);
+  assert.equal(second.getDownloadTag(), null);
+});
+
+test('untagged visits and downloads are counted for all time and selected dates', async () => {
+  const { visits, downloads, analytics } = api();
+  assert.equal((await visits(post('visits', { tag: null }))).status, 200);
+  assert.equal((await visits(post('visits', {}))).status, 200);
+  assert.equal((await downloads(post('downloads', {}))).status, 200);
+  const expected = [{ tag: '(untagged)', visits: 2, downloads: 1 }];
+  const today = new Date().toISOString().slice(0, 10);
+  assert.deepEqual((await (await analytics(admin())).json()).taggedTraffic, expected);
+  assert.deepEqual((await (await analytics(admin(`?from=${today}&to=${today}`))).json()).taggedTraffic, expected);
+  assert.equal((await visits(post('visits', { tag: 'untagged' }))).status, 200);
+  const sources = (await (await analytics(admin())).json()).taggedTraffic;
+  assert.equal(sources.find(item => item.tag === 'untagged').visits, 1);
+  assert.equal(sources.find(item => item.tag === '(untagged)').visits, 2);
 });

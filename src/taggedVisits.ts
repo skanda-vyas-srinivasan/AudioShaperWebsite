@@ -18,12 +18,10 @@ export function getDownloadTag(): string | null {
   return activeTag;
 }
 
-export function recordTaggedVisit(): Promise<void> {
-  // Count each tagged page load, but only once when React remounts in Strict Mode.
+export function recordWebsiteVisit(): Promise<void> {
+  // Count each page load, but only once when React remounts in Strict Mode.
   if (visitRequest) return visitRequest;
-  getDownloadTag();
-  const tag = normalizeTag(new URLSearchParams(window.location.search).get('ref'));
-  if (!tag) return Promise.resolve();
+  const tag = getDownloadTag();
   visitRequest = fetch('/api/visits', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

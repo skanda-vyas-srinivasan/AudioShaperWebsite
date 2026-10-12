@@ -1,5 +1,5 @@
 import { Redis } from '@upstash/redis';
-import { isTrustedWebsiteRequest, normalizeTag, VISITS_PREFIX } from '../lib/tags';
+import { isTrustedWebsiteRequest, normalizeTag, UNTAGGED_KEY, VISITS_PREFIX } from '../lib/tags';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -15,16 +15,21 @@ export default async function handler(req: Request) {
   try {
     body = await req.json();
   } catch {
-    return Response.json({ error: 'Use a JSON body with a valid tag.' }, { status: 400, headers });
+    return Response.json({ error: 'Use a JSON object with an optional tag.' }, { status: 400, headers });
   }
-  const tag = normalizeTag(body && typeof body === 'object' && 'tag' in body ? body.tag : null);
-  if (!tag) return Response.json({ error: 'Use a tag of up to 64 letters, numbers, hyphens, or underscores.' }, { status: 400, headers });
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return Response.json({ error: 'Use a JSON object with an optional tag.' }, { status: 400, headers });
+  }
+  const suppliedTag = 'tag' in body ? body.tag : null;
+  const tag = normalizeTag(suppliedTag);
+  if (suppliedTag != null && !tag) return Response.json({ error: 'Use a tag of up to 64 letters, numbers, hyphens, or underscores.' }, { status: 400, headers });
+  const bucket = tag || UNTAGGED_KEY;
 
   try {
     const day = new Date().toISOString().slice(0, 10);
     const pipeline = redis.pipeline();
-    pipeline.hincrby(`${VISITS_PREFIX}:tags`, tag, 1);
-    pipeline.hincrby(`${VISITS_PREFIX}:day:${day}:tags`, tag, 1);
+    pipeline.hincrby(`${VISITS_PREFIX}:tags`, bucket, 1);
+    pipeline.hincrby(`${VISITS_PREFIX}:day:${day}:tags`, bucket, 1);
     await pipeline.exec();
     return Response.json({ ok: true }, { headers });
   } catch (error) {

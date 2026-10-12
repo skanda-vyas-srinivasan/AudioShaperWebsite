@@ -17,6 +17,7 @@ import {
   Users,
 } from 'lucide-react';
 import './index.css';
+import { UNTAGGED_KEY } from '../lib/tags';
 
 type CountItem = { label: string; count: number };
 type DownloadEvent = {
@@ -67,7 +68,7 @@ type MoverDimension = keyof typeof moverDimensions;
 const SECTIONS = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
-  { id: 'tagged-traffic', label: 'Tagged traffic', icon: Compass },
+  { id: 'tagged-traffic', label: 'Traffic sources', icon: Compass },
   { id: 'recent-downloads', label: 'Recent downloads', icon: Clock3 },
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'devices-versions', label: 'Devices & versions', icon: Laptop },
@@ -806,14 +807,14 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
           </section>
 
           <section id="tagged-traffic" className="scroll-mt-8 mb-12">
-            <SectionHeading icon={Compass} title="Tagged traffic" subtitle="Website visits and download clicks from links such as your résumé." />
+            <SectionHeading icon={Compass} title="Traffic sources" subtitle="Website visits and download clicks from tagged links and untagged traffic." />
             <div className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5 md:p-6">
               {analytics.taggedTraffic?.length ? (
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[420px] text-sm">
                     <thead>
                       <tr>
-                        {['Tag', 'Website visits', 'Download clicks'].map((label) => (
+                        {['Source', 'Website visits', 'Download clicks'].map((label) => (
                           <th key={label} className="border-b border-[#242435] px-3 pb-3 text-left font-medium text-[#747789]">{label}</th>
                         ))}
                       </tr>
@@ -821,7 +822,7 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
                     <tbody>
                       {analytics.taggedTraffic.map((item) => (
                         <tr key={item.tag} className="border-b border-[#191925]">
-                          <td className="px-3 py-3 font-mono text-[#20F4FF]">{item.tag}</td>
+                          <td className="px-3 py-3 font-mono text-[#20F4FF]">{item.tag === UNTAGGED_KEY ? 'Untagged' : item.tag}</td>
                           <td className="px-3 py-3 tabular-nums">{item.visits.toLocaleString()}</td>
                           <td className="px-3 py-3 tabular-nums">{item.downloads.toLocaleString()}</td>
                         </tr>
@@ -830,9 +831,9 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
                   </table>
                 </div>
               ) : (
-                <p className="text-sm text-[#747789]">No tagged traffic in this date range. Use sonexis.ink/?ref=resume in your résumé link.</p>
+                <p className="text-sm text-[#747789]">No traffic recorded in this date range. Use sonexis.ink/?ref=resume to identify résumé traffic.</p>
               )}
-              <p className="mt-4 text-xs leading-5 text-[#747789]">Each tagged page load counts as a visit, including refreshes and repeat visits. Download clicks retain the tag in the same browser tab; they do not confirm completed downloads or installations.</p>
+              <p className="mt-4 text-xs leading-5 text-[#747789]">Each page load counts as a visit, including refreshes and repeat visits. Tags carry over in the same browser tab; visits and download clicks without a tag appear under Untagged. Download clicks do not confirm completed downloads or installations. Untagged counts cover newly recorded traffic; earlier traffic is unavailable.</p>
             </div>
           </section>
 

@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { readableLocation } from './geo';
-import { VISITS_PREFIX } from '../lib/tags';
+import { UNTAGGED_KEY, VISITS_PREFIX } from '../lib/tags';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -239,8 +239,8 @@ async function loadTaggedTraffic(days: string[] | null) {
       }
     }
   }
-  return Array.from(new Set([...visits.keys(), ...downloads.keys()]))
+  return Array.from(new Set([...visits.keys(), ...downloads.keys(), UNTAGGED_KEY]))
     .map((tag) => ({ tag, visits: visits.get(tag) || 0, downloads: downloads.get(tag) || 0 }))
-    .filter((item) => item.visits > 0 || item.downloads > 0)
+    .filter((item) => item.tag === UNTAGGED_KEY || item.visits > 0 || item.downloads > 0)
     .sort((a, b) => b.visits - a.visits || b.downloads - a.downloads || a.tag.localeCompare(b.tag));
 }

@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { continentName, countryName, regionName } from './geo';
-import { isTrustedWebsiteRequest, normalizeTag } from '../lib/tags';
+import { isTrustedWebsiteRequest, normalizeTag, UNTAGGED_KEY } from '../lib/tags';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -131,10 +131,9 @@ async function recordAnalytics(req: Request) {
   pipeline.ltrim(EVENT_KEY, 0, MAX_STORED_EVENTS - 1);
   pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:total`, 'downloads', 1);
   pipeline.hincrby(`${ANALYTICS_PREFIX}:days`, day, 1);
-  if (tag) {
-    pipeline.hincrby(`${ANALYTICS_PREFIX}:tags`, tag, 1);
-    pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:tags`, tag, 1);
-  }
+  const bucket = tag || UNTAGGED_KEY;
+  pipeline.hincrby(`${ANALYTICS_PREFIX}:tags`, bucket, 1);
+  pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:tags`, bucket, 1);
   for (const [dimension, value] of Object.entries(dimensions)) {
     pipeline.hincrby(`${ANALYTICS_PREFIX}:${dimension}`, value, 1);
     pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:${dimension}`, value, 1);

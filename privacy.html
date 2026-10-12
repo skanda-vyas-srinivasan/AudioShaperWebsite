@@ -27,12 +27,13 @@
           </section>
 
           <section>
-            <h2 class="mb-2 text-xl font-semibold text-white">Tagged website visits</h2>
+            <h2 class="mb-2 text-xl font-semibold text-white">Website visits</h2>
             <p>
-              Links containing a campaign tag, such as <code>?ref=resume</code>, record an aggregate
-              website-visit count for that tag and date. Each tagged page load, including refreshes,
-              counts as a visit. We keep the tag in your browser's session storage to associate
-              download-button clicks in the same tab with that source. Closing the tab ends this
+              Each homepage load, including refreshes, records an aggregate website-visit count
+              by date and source. Links containing a campaign tag, such as <code>?ref=resume</code>,
+              identify that source. We keep the tag in your browser's session storage to associate
+              later visits and download-button clicks in the same tab with that source. Traffic
+              without a current or remembered tag is counted as untagged. Closing the tab ends this
               storage, and a new tagged link replaces the previous tag. The tag is also stored with
               recent download events. These statistics measure visits and button clicks, not completed
               downloads, installations, or activity inside the app.

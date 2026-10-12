@@ -6,6 +6,8 @@ export function normalizeTag(value: unknown): string | null {
 }
 
 export const VISITS_PREFIX = 'sonexis:visit-analytics';
+// Parentheses cannot occur in a valid campaign tag, so this bucket cannot collide.
+export const UNTAGGED_KEY = '(untagged)';
 
 export function isTrustedWebsiteRequest(req: Request): boolean {
   const source = req.headers.get('origin') || req.headers.get('referer');

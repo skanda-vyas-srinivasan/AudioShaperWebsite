@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { Github, ChevronDown, MessageSquare, Coffee } from 'lucide-react';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
 import { NavHeader } from './components/NavHeader';
-import { getDownloadTag, recordTaggedVisit } from './taggedVisits';
+import { getDownloadTag, recordWebsiteVisit } from './taggedVisits';
 
 // Scroll-triggered animation variants
 const fadeInUp = {
@@ -48,7 +48,7 @@ export default function App() {
   useEffect(() => {
     if (isLocalDev) return;
 
-    void recordTaggedVisit();
+    void recordWebsiteVisit();
     fetch('/api/downloads')
       .then(res => res.json())
       .then(data => setDownloadCount(data.count))

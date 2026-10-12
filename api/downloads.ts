@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { continentName, countryName, regionName } from './geo';
+import { isTrustedWebsiteRequest, normalizeTag } from '../lib/tags';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -8,6 +9,8 @@ const redis = new Redis({
 
 const COUNTER_KEY = 'sonexis:downloads';
 const ANALYTICS_PREFIX = 'sonexis:download-analytics';
+const EVENT_KEY = `${ANALYTICS_PREFIX}:events`;
+const MAX_STORED_EVENTS = 2000;
 
 const clean = (value: string | null, fallback = 'Unknown') => {
   if (!value) return fallback;
@@ -42,21 +45,6 @@ const sourceFrom = (value: unknown) => {
     return new URL(value).hostname.replace(/^www\./, '').slice(0, 100) || 'Direct / unknown';
   } catch {
     return 'Direct / unknown';
-  }
-};
-
-const isTrustedWebsiteRequest = (req: Request) => {
-  const source = req.headers.get('origin') || req.headers.get('referer');
-  if (!source) return false;
-
-  try {
-    const hostname = new URL(source).hostname;
-    return hostname === 'sonexis.ink'
-      || hostname === 'www.sonexis.ink'
-      || hostname === 'localhost'
-      || hostname.endsWith('.vercel.app');
-  } catch {
-    return false;
   }
 };
 
@@ -96,9 +84,10 @@ async function recordAnalytics(req: Request) {
   const day = new Date().toISOString().slice(0, 10);
   const fingerprint = await uniqueFingerprint(req);
 
-  let body: { referrer?: unknown; version?: unknown } = {};
+  let body: { referrer?: unknown; version?: unknown; tag?: unknown } = {};
   try {
-    body = await req.json();
+    const parsed = await req.json();
+    if (parsed && typeof parsed === 'object') body = parsed;
   } catch {
     // Older clients may send the POST without a JSON body.
   }
@@ -106,6 +95,7 @@ async function recordAnalytics(req: Request) {
   const regionLabel = country === 'Unknown' ? region : `${country} · ${region}`;
   const cityLabel = [city, region, country].filter((part) => part !== 'Unknown').join(', ') || 'Unknown';
   const version = typeof body.version === 'string' ? clean(body.version) : 'Unknown';
+  const tag = normalizeTag(body.tag);
   const pipeline = redis.pipeline();
   const dimensions = {
     continents: continent,
@@ -119,10 +109,32 @@ async function recordAnalytics(req: Request) {
     sources: sourceFrom(body.referrer),
     versions: version,
   };
+  const event = {
+    id: crypto.randomUUID(),
+    timestamp: new Date().toISOString(),
+    visitorId: fingerprint ? fingerprint.slice(0, 12) : null,
+    country,
+    region,
+    city,
+    continent,
+    timezone,
+    device: dimensions.devices,
+    browser: dimensions.browsers,
+    language,
+    source: dimensions.sources,
+    version,
+    tag,
+  };
 
   pipeline.incr(COUNTER_KEY);
+  pipeline.lpush(EVENT_KEY, JSON.stringify(event));
+  pipeline.ltrim(EVENT_KEY, 0, MAX_STORED_EVENTS - 1);
   pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:total`, 'downloads', 1);
   pipeline.hincrby(`${ANALYTICS_PREFIX}:days`, day, 1);
+  if (tag) {
+    pipeline.hincrby(`${ANALYTICS_PREFIX}:tags`, tag, 1);
+    pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:tags`, tag, 1);
+  }
   for (const [dimension, value] of Object.entries(dimensions)) {
     pipeline.hincrby(`${ANALYTICS_PREFIX}:${dimension}`, value, 1);
     pipeline.hincrby(`${ANALYTICS_PREFIX}:day:${day}:${dimension}`, value, 1);

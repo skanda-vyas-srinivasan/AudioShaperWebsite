@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { readableLocation } from './geo';
+import { VISITS_PREFIX } from '../lib/tags';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -8,10 +9,55 @@ const redis = new Redis({
 
 const COUNTER_KEY = 'sonexis:downloads';
 const ANALYTICS_PREFIX = 'sonexis:download-analytics';
+const EVENT_KEY = `${ANALYTICS_PREFIX}:events`;
+const MAX_EVENT_SCAN = 2000;
+const MAX_RETURNED_EVENTS = 250;
 const DIMENSIONS = ['continents', 'countries', 'regions', 'cities', 'timezones', 'devices', 'browsers', 'languages', 'sources', 'versions'] as const;
 type Dimension = typeof DIMENSIONS[number];
 type Counts = Record<string, number | string> | null;
 type CountItem = { label: string; count: number };
+type DownloadEvent = {
+  id: string;
+  timestamp: string;
+  visitorId: string | null;
+  country: string;
+  region: string;
+  city: string;
+  continent: string;
+  timezone: string;
+  device: string;
+  browser: string;
+  language: string;
+  source: string;
+  version: string;
+  tag?: string | null;
+};
+
+const parseEvent = (value: unknown): DownloadEvent | null => {
+  try {
+    const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const event = parsed as Partial<DownloadEvent>;
+    if (typeof event.id !== 'string' || typeof event.timestamp !== 'string') return null;
+    return event as DownloadEvent;
+  } catch {
+    return null;
+  }
+};
+
+async function loadRecentEvents(from: Date | null, to: Date | null) {
+  const rawEvents = await redis.lrange<unknown>(EVENT_KEY, 0, MAX_EVENT_SCAN - 1);
+  const fromTime = from?.getTime() ?? Number.NEGATIVE_INFINITY;
+  const toTime = to ? to.getTime() + 86400000 - 1 : Number.POSITIVE_INFINITY;
+  return (rawEvents || [])
+    .map(parseEvent)
+    .filter((event): event is DownloadEvent => {
+      if (!event) return false;
+      const timestamp = Date.parse(event.timestamp);
+      return Number.isFinite(timestamp) && timestamp >= fromTime && timestamp <= toTime;
+    })
+    .slice(0, MAX_RETURNED_EVENTS);
+}
 
 const normalizeCounts = (counts: Counts, dimension = '') =>
   Object.entries(counts || {})
@@ -121,10 +167,11 @@ export default async function handler(req: Request) {
       dimensions: Record<string, CountItem[]>;
       totalDownloads?: number;
     };
+    let range: string[] | null = null;
     if (from || to) {
       const start = from || to!;
       const end = to || from!;
-      const range = datesBetween(start, end);
+      range = datesBetween(start, end);
       if (range.length > 366) return Response.json({ error: 'Date ranges may be at most 366 days.' }, { status: 400 });
       result = await loadFiltered(range);
     } else {
@@ -148,6 +195,11 @@ export default async function handler(req: Request) {
       };
     }
 
+    const [recentEvents, taggedTraffic] = await Promise.all([
+      loadRecentEvents(from, to),
+      loadTaggedTraffic(range),
+    ]);
+
     return Response.json(
       {
         totalDownloads: result.totalDownloads ?? result.filteredTotal,
@@ -156,6 +208,8 @@ export default async function handler(req: Request) {
         generatedAt: new Date().toISOString(),
         days: result.days,
         uniqueByDay: result.uniqueByDay,
+        recentEvents,
+        taggedTraffic,
         ...result.dimensions,
       },
       { headers: { 'Cache-Control': 'private, no-store, max-age=0', 'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'" } },
@@ -167,3 +221,26 @@ export default async function handler(req: Request) {
 }
 
 export const config = { runtime: 'edge' };
+
+async function loadTaggedTraffic(days: string[] | null) {
+  const visits = new Map<string, number>();
+  const downloads = new Map<string, number>();
+  const rows = await Promise.all((days || [null]).map(async (day) => {
+    const suffix = day ? `:day:${day}:tags` : ':tags';
+    return Promise.all([
+      redis.hgetall<Record<string, number | string>>(`${VISITS_PREFIX}${suffix}`),
+      redis.hgetall<Record<string, number | string>>(`${ANALYTICS_PREFIX}${suffix}`),
+    ]);
+  }));
+  for (const [visitCounts, downloadCounts] of rows) {
+    for (const [target, counts] of [[visits, visitCounts], [downloads, downloadCounts]] as const) {
+      for (const [tag, count] of Object.entries(counts || {})) {
+        target.set(tag, (target.get(tag) || 0) + (Number(count) || 0));
+      }
+    }
+  }
+  return Array.from(new Set([...visits.keys(), ...downloads.keys()]))
+    .map((tag) => ({ tag, visits: visits.get(tag) || 0, downloads: downloads.get(tag) || 0 }))
+    .filter((item) => item.visits > 0 || item.downloads > 0)
+    .sort((a, b) => b.visits - a.visits || b.downloads - a.downloads || a.tag.localeCompare(b.tag));
+}

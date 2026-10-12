@@ -11,6 +11,7 @@ import {
   MapPin,
   RefreshCw,
   Search,
+  Clock3,
   TrendingDown,
   TrendingUp,
   Users,
@@ -18,6 +19,22 @@ import {
 import './index.css';
 
 type CountItem = { label: string; count: number };
+type DownloadEvent = {
+  id: string;
+  timestamp: string;
+  visitorId: string | null;
+  country: string;
+  region: string;
+  city: string;
+  continent: string;
+  timezone: string;
+  device: string;
+  browser: string;
+  language: string;
+  source: string;
+  version: string;
+  tag?: string | null;
+};
 type Analytics = {
   totalDownloads: number;
   filteredTotal: number;
@@ -35,6 +52,8 @@ type Analytics = {
   languages: CountItem[];
   sources: CountItem[];
   versions: CountItem[];
+  recentEvents: DownloadEvent[];
+  taggedTraffic?: { tag: string; visits: number; downloads: number }[];
 };
 
 const SESSION_KEY = 'sonexis-analytics-token';
@@ -48,6 +67,8 @@ type MoverDimension = keyof typeof moverDimensions;
 const SECTIONS = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
+  { id: 'tagged-traffic', label: 'Tagged traffic', icon: Compass },
+  { id: 'recent-downloads', label: 'Recent downloads', icon: Clock3 },
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'devices-versions', label: 'Devices & versions', icon: Laptop },
 ] as const;
@@ -430,6 +451,73 @@ function SmallTable({ title, items }: { title: string; items: CountItem[] }) {
   );
 }
 
+function RecentDownloads({ events }: { events: DownloadEvent[] }) {
+  const [query, setQuery] = useState('');
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return events;
+    return events.filter((event) => Object.values(event).some((value) => String(value || '').toLowerCase().includes(needle)));
+  }, [events, query]);
+
+  return (
+    <section className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5 md:p-6">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Download event log</h3>
+          <p className="mt-1 text-sm text-[#747789]">Newest first · showing up to 250 events in this date range.</p>
+        </div>
+        <label className="relative flex min-w-[240px] items-center">
+          <Search className="absolute left-3 h-4 w-4 text-[#747789]" />
+          <input
+            aria-label="Search download events"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search visitor, place, device…"
+            className="w-full rounded-lg border border-[#343449] bg-[#030307] py-2.5 pl-9 pr-3 text-sm text-white outline-none focus:border-[#20F4FF]"
+          />
+        </label>
+      </div>
+      {filtered.length === 0 ? (
+        <p className="py-10 text-center text-sm text-[#747789]">No recorded download events in this range.</p>
+      ) : (
+        <div className="table-responsive max-h-[560px] overflow-auto">
+          <table className="table min-w-[1080px] w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-[#080811]">
+              <tr>
+                {['Time', 'Visitor', 'Location', 'Device', 'Browser', 'Language', 'Source', 'Tag', 'Version'].map((label) => (
+                  <th key={label} className="border-b border-[#242435] px-3 pb-3 text-left font-medium text-[#747789]">{label}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((event) => {
+                const place = [event.city, event.region, event.country].filter((part) => part && part !== 'Unknown').join(', ') || 'Unknown';
+                return (
+                  <tr key={event.id} className="border-t border-[#191925] align-top hover:bg-[#10101d]">
+                    <td className="whitespace-nowrap px-3 py-3 text-[#C5C8D8]" title={event.timestamp}>
+                      {new Date(event.timestamp).toLocaleString()}
+                      {event.timezone && event.timezone !== 'Unknown' && <div className="mt-1 text-xs text-[#747789]">{event.timezone}</div>}
+                    </td>
+                    <td className="px-3 py-3 font-mono text-[#A778FF]">{event.visitorId ? `#${event.visitorId}` : 'Unavailable'}</td>
+                    <td className="max-w-[260px] px-3 py-3 text-[#C5C8D8]" title={place}>{place}</td>
+                    <td className="px-3 py-3 text-[#C5C8D8]">{event.device}</td>
+                    <td className="px-3 py-3 text-[#C5C8D8]">{event.browser}</td>
+                    <td className="px-3 py-3 text-[#C5C8D8]">{event.language}</td>
+                    <td className="max-w-[190px] truncate px-3 py-3 text-[#C5C8D8]" title={event.source}>{event.source}</td>
+                    <td className="px-3 py-3 font-mono text-[#20F4FF]">{event.tag || '—'}</td>
+                    <td className="px-3 py-3 font-mono text-white">{event.version}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="mt-4 text-xs leading-5 text-[#747789]">Visitor IDs are shortened, secret-keyed fingerprints—not names or raw network addresses. Repeated IDs are only an estimate of the same downloader.</p>
+    </section>
+  );
+}
+
 function SectionHeading({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle: string }) {
   return (
     <div className="mb-5 flex items-center gap-3">
@@ -587,7 +675,7 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
         <div className="mx-auto max-w-6xl">
           <header className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="text-3xl font-black tracking-tight md:text-4xl">Download analytics</h1>
+              <h1 className="text-3xl font-black tracking-tight md:text-4xl">Website & download analytics</h1>
               <p className="mt-2 text-sm text-[#747789]">{rangeText} · Updated {new Date(analytics.generatedAt).toLocaleString()}</p>
             </div>
             <div className="flex gap-2">
@@ -715,6 +803,42 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
               previous={previous}
               enabled={hasComparison}
             />
+          </section>
+
+          <section id="tagged-traffic" className="scroll-mt-8 mb-12">
+            <SectionHeading icon={Compass} title="Tagged traffic" subtitle="Website visits and download clicks from links such as your résumé." />
+            <div className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5 md:p-6">
+              {analytics.taggedTraffic?.length ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[420px] text-sm">
+                    <thead>
+                      <tr>
+                        {['Tag', 'Website visits', 'Download clicks'].map((label) => (
+                          <th key={label} className="border-b border-[#242435] px-3 pb-3 text-left font-medium text-[#747789]">{label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.taggedTraffic.map((item) => (
+                        <tr key={item.tag} className="border-b border-[#191925]">
+                          <td className="px-3 py-3 font-mono text-[#20F4FF]">{item.tag}</td>
+                          <td className="px-3 py-3 tabular-nums">{item.visits.toLocaleString()}</td>
+                          <td className="px-3 py-3 tabular-nums">{item.downloads.toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-sm text-[#747789]">No tagged traffic in this date range. Use sonexis.ink/?ref=resume in your résumé link.</p>
+              )}
+              <p className="mt-4 text-xs leading-5 text-[#747789]">Each tagged page load counts as a visit, including refreshes and repeat visits. Download clicks retain the tag in the same browser tab; they do not confirm completed downloads or installations.</p>
+            </div>
+          </section>
+
+          <section id="recent-downloads" className="scroll-mt-8 mb-12">
+            <SectionHeading icon={Clock3} title="Recent downloads" subtitle="A timestamped, privacy-preserving record of individual download events." />
+            <RecentDownloads events={analytics.recentEvents || []} />
           </section>
 
           <section id="locations" className="scroll-mt-8 mb-12">

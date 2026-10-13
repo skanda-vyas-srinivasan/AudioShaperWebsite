@@ -19,8 +19,10 @@ addresses and full user-agent strings are never stored. Events recorded before t
 be reconstructed from the existing aggregate counters.
 
 The **Recent visits** section includes tagged and untagged visits. Select `resume` in the tag
-filter to view résumé visits, or search by tag, visitor ID, location, or device. The filters apply
-to the displayed events. Visit logging starts after deploying this update; earlier visit totals
+filter to view résumé visits, or select **Untagged**, which is always available even when there
+are no untagged events in the initial view. Source filters search the latest 2,000 retained
+events before returning up to 250 matches. Text search applies to the displayed events and
+recognizes the label `Untagged` for events without a tag. Visit logging starts after deploying this update; earlier visit totals
 remain available, but individual historical visit events cannot be recovered. Referring sites
 are stored as hostnames, excluding URL paths and query strings.
 

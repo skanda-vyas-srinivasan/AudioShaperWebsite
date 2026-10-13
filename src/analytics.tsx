@@ -454,24 +454,66 @@ function SmallTable({ title, items }: { title: string; items: CountItem[] }) {
   );
 }
 
-function EventLog({ events, kind }: { events: TrafficEvent[]; kind: 'visit' | 'download' }) {
+function EventLog({ events, kind, token, from, to }: {
+  events: TrafficEvent[];
+  kind: 'visit' | 'download';
+  token: string;
+  from: string;
+  to: string;
+}) {
   const [query, setQuery] = useState('');
   const [tagFilter, setTagFilter] = useState('*');
-  const tags = Array.from(new Set(events.map((event) => event.tag || UNTAGGED_KEY))).sort();
+  const [loadedEvents, setLoadedEvents] = useState<TrafficEvent[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const displayedEvents = loadedEvents ?? events;
+  const tags = Array.from(new Set([
+    UNTAGGED_KEY,
+    ...events.map((event) => event.tag || UNTAGGED_KEY),
+    ...(tagFilter === '*' ? [] : [tagFilter]),
+  ])).sort();
+
+  useEffect(() => {
+    let cancelled = false;
+    setError('');
+    if (tagFilter === '*') {
+      setLoadedEvents(null);
+      setLoading(false);
+      return;
+    }
+    setLoadedEvents([]);
+    setLoading(true);
+    const params = new URLSearchParams({ events: `${kind}s`, tag: tagFilter });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    void fetch(`/api/analytics?${params}`, {
+      headers: { Authorization: `Bearer ${token}` }, cache: 'no-store',
+    }).then(async (response) => {
+      if (!response.ok) throw new Error('Event log could not be loaded. Try refreshing.');
+      const data = await response.json();
+      if (!cancelled) setLoadedEvents(data.events);
+    }).catch((loadError) => {
+      if (!cancelled) setError(loadError instanceof Error ? loadError.message : 'Event log could not be loaded.');
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [events, kind, tagFilter, token, from, to]);
+
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    return events.filter((event) => (
+    return displayedEvents.filter((event) => (
       (tagFilter === '*' || (event.tag || UNTAGGED_KEY) === tagFilter)
-      && (!needle || Object.values(event).some((value) => String(value || '').toLowerCase().includes(needle)))
+      && (!needle || [...Object.values(event), event.tag || 'Untagged'].some((value) => String(value || '').toLowerCase().includes(needle)))
     ));
-  }, [events, query, tagFilter]);
+  }, [displayedEvents, query, tagFilter]);
 
   return (
     <section className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5 md:p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-white">{kind === 'visit' ? 'Visit' : 'Download'} event log</h3>
-          <p className="mt-1 text-sm text-[#747789]">Newest first · showing up to 250 events in this date range.</p>
+          <p className="mt-1 text-sm text-[#747789]">Newest first · up to 250 events{tagFilter === '*' ? '' : ' for this source'} in this date range.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <select
@@ -495,8 +537,10 @@ function EventLog({ events, kind }: { events: TrafficEvent[]; kind: 'visit' | 'd
           </label>
         </div>
       </div>
-      {filtered.length === 0 ? (
-        <p className="py-10 text-center text-sm text-[#747789]">{events.length ? 'No events match these filters.' : `No recorded ${kind} events in this range.`}</p>
+      {loading || error || filtered.length === 0 ? (
+        <p role={error ? 'alert' : 'status'} className="py-10 text-center text-sm text-[#747789]">
+          {loading ? 'Loading events…' : error || (query.trim() ? 'No events match these filters.' : `No recorded ${tagFilter === UNTAGGED_KEY ? 'untagged ' : ''}${kind} events in this range.`)}
+        </p>
       ) : (
         <div className="table-responsive max-h-[560px] overflow-auto">
           <table className="table min-w-[1080px] w-full text-sm">
@@ -531,7 +575,7 @@ function EventLog({ events, kind }: { events: TrafficEvent[]; kind: 'visit' | 'd
           </table>
         </div>
       )}
-      <p className="mt-4 text-xs leading-5 text-[#747789]">Visitor IDs are shortened, secret-keyed fingerprints—not names or raw network addresses. Repeated IDs are only an estimate of the same visitor. Filters apply to the displayed events.</p>
+      <p className="mt-4 text-xs leading-5 text-[#747789]">Visitor IDs are shortened, secret-keyed fingerprints—not names or raw network addresses. Repeated IDs are only an estimate of the same visitor. Source filters search the retained log; text search applies to the displayed events.</p>
     </section>
   );
 }
@@ -599,6 +643,7 @@ function Sidebar({ active, mobile = false }: { active: string; mobile?: boolean 
 function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [previous, setPrevious] = useState<Analytics | null>(null);
+  const [loadedRange, setLoadedRange] = useState({ from: '', to: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [preset, setPreset] = useState('30d');
@@ -631,6 +676,7 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
 
       const [currentJson, previousJson] = await Promise.all(responses.map((response) => response.json()));
       setAnalytics(currentJson);
+      setLoadedRange({ from: rangeFrom, to: rangeTo });
       setPrevious(hasComparablePrior ? previousJson : null);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Analytics could not be loaded.');
@@ -856,13 +902,13 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
 
           <section id="recent-visits" className="scroll-mt-8 mb-12">
             <SectionHeading icon={Users} title="Recent visits" subtitle="Individual website visits, with tags such as resume and untagged traffic." />
-            <EventLog events={analytics.recentVisitEvents || []} kind="visit" />
+            <EventLog events={analytics.recentVisitEvents || []} kind="visit" token={token} from={loadedRange.from} to={loadedRange.to} />
             <p className="mt-3 text-xs text-[#747789]">Visit events are available from when visit logging was enabled. Earlier aggregate totals cannot be turned into individual events.</p>
           </section>
 
           <section id="recent-downloads" className="scroll-mt-8 mb-12">
             <SectionHeading icon={Clock3} title="Recent downloads" subtitle="A timestamped, privacy-preserving record of individual download events." />
-            <EventLog events={analytics.recentEvents || []} kind="download" />
+            <EventLog events={analytics.recentEvents || []} kind="download" token={token} from={loadedRange.from} to={loadedRange.to} />
           </section>
 
           <section id="locations" className="scroll-mt-8 mb-12">

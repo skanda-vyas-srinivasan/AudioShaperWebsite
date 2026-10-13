@@ -294,3 +294,38 @@ test('visit events retain only the newest 2,000 and return at most 250', async (
   assert.equal(data.recentVisitEvents[0].tag, 'resume');
   assert.equal(data.recentVisitEvents.at(-1).id, 'visit-248');
 });
+
+test('untagged filter finds visits older than the newest 250 tagged events', async () => {
+  const { analytics } = api();
+  const timestamp = '2026-10-13T12:00:00.000Z';
+  MemoryRedis.values.set('sonexis:visit-analytics:events', [
+    ...Array.from({ length: 250 }, (_, index) => JSON.stringify({ id: `resume-${index}`, timestamp, tag: 'resume' })),
+    JSON.stringify({ id: 'untagged-older', timestamp, tag: null }),
+    JSON.stringify({ id: 'untagged-legacy', timestamp }),
+    JSON.stringify({ id: 'literal-tag', timestamp, tag: 'untagged' }),
+    JSON.stringify({ id: 'outside-range', timestamp: '2026-10-12T12:00:00.000Z', tag: null }),
+  ]);
+  const query = '?events=visits&tag=%28untagged%29&from=2026-10-13&to=2026-10-13';
+  const response = await analytics(admin(query));
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Cache-Control'), 'private, no-store, max-age=0');
+  assert.deepEqual((await response.json()).events.map(event => event.id), ['untagged-older', 'untagged-legacy']);
+  const normal = await (await analytics(admin('?from=2026-10-13&to=2026-10-13'))).json();
+  assert.equal(normal.recentVisitEvents.length, 250);
+  assert.ok(normal.recentVisitEvents.every(event => event.tag === 'resume'));
+  const tagged = await (await analytics(admin('?events=visits&tag=untagged'))).json();
+  assert.deepEqual(tagged.events.map(event => event.id), ['literal-tag']);
+});
+
+test('filtered event reads preserve authentication, validation, and download-log isolation', async () => {
+  const { analytics } = api();
+  MemoryRedis.values.set('sonexis:download-analytics:events', [JSON.stringify({
+    id: 'untagged-download', timestamp: '2026-10-13T12:00:00.000Z', tag: null,
+  })]);
+  const query = '?events=downloads&tag=%28untagged%29';
+  assert.equal((await analytics(new Request(`https://sonexis.ink/api/analytics${query}`))).status, 401);
+  assert.deepEqual((await (await analytics(admin(query))).json()).events.map(event => event.id), ['untagged-download']);
+  for (const invalid of ['?events=invalid', '?events=visits&tag=bad%20tag', '?events=visits&from=invalid']) {
+    assert.equal((await analytics(admin(invalid))).status, 400);
+  }
+});

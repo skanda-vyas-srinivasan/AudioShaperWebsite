@@ -1,6 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { readableLocation } from './geo';
-import { UNTAGGED_KEY, VISITS_PREFIX } from '../lib/tags';
+import { normalizeTag, UNTAGGED_KEY, VISITS_PREFIX } from '../lib/tags';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -45,7 +45,7 @@ const parseEvent = (value: unknown): TrafficEvent | null => {
   }
 };
 
-async function loadRecentEvents(key: string, from: Date | null, to: Date | null) {
+async function loadRecentEvents(key: string, from: Date | null, to: Date | null, tag: string | null = null) {
   const rawEvents = await redis.lrange<unknown>(key, 0, MAX_EVENT_SCAN - 1);
   const fromTime = from?.getTime() ?? Number.NEGATIVE_INFINITY;
   const toTime = to ? to.getTime() + 86400000 - 1 : Number.POSITIVE_INFINITY;
@@ -54,7 +54,8 @@ async function loadRecentEvents(key: string, from: Date | null, to: Date | null)
     .filter((event): event is TrafficEvent => {
       if (!event) return false;
       const timestamp = Date.parse(event.timestamp);
-      return Number.isFinite(timestamp) && timestamp >= fromTime && timestamp <= toTime;
+      return Number.isFinite(timestamp) && timestamp >= fromTime && timestamp <= toTime
+        && (tag === null || (event.tag || UNTAGGED_KEY) === tag);
     })
     .slice(0, MAX_RETURNED_EVENTS);
 }
@@ -156,6 +157,23 @@ export default async function handler(req: Request) {
     const to = toDate(url.searchParams.get('to'));
     if ((url.searchParams.has('from') && !from) || (url.searchParams.has('to') && !to) || (from && to && from > to)) {
       return Response.json({ error: 'Use valid YYYY-MM-DD dates with from before to.' }, { status: 400 });
+    }
+
+    // Filter the retained log before applying the display limit, so quieter sources
+    // remain visible even when the newest 250 events are all from another source.
+    if (url.searchParams.has('events')) {
+      const kind = url.searchParams.get('events');
+      if (kind !== 'visits' && kind !== 'downloads') {
+        return Response.json({ error: 'Use events=visits or events=downloads.' }, { status: 400 });
+      }
+      const suppliedTag = url.searchParams.get('tag');
+      const tag = suppliedTag === UNTAGGED_KEY ? UNTAGGED_KEY : normalizeTag(suppliedTag);
+      if (suppliedTag !== null && !tag) {
+        return Response.json({ error: 'Use a valid event tag.' }, { status: 400 });
+      }
+      const key = kind === 'visits' ? `${VISITS_PREFIX}:events` : EVENT_KEY;
+      const events = await loadRecentEvents(key, from, to, tag);
+      return Response.json({ events }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
     }
 
     const dayKeys = (await redis.hkeys(`${ANALYTICS_PREFIX}:days`)) || [];

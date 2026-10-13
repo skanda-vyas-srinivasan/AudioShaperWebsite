@@ -20,7 +20,7 @@ import './index.css';
 import { UNTAGGED_KEY } from '../lib/tags';
 
 type CountItem = { label: string; count: number };
-type DownloadEvent = {
+type TrafficEvent = {
   id: string;
   timestamp: string;
   visitorId: string | null;
@@ -33,7 +33,7 @@ type DownloadEvent = {
   browser: string;
   language: string;
   source: string;
-  version: string;
+  version?: string;
   tag?: string | null;
 };
 type Analytics = {
@@ -53,7 +53,8 @@ type Analytics = {
   languages: CountItem[];
   sources: CountItem[];
   versions: CountItem[];
-  recentEvents: DownloadEvent[];
+  recentEvents: TrafficEvent[];
+  recentVisitEvents?: TrafficEvent[];
   taggedTraffic?: { tag: string; visits: number; downloads: number }[];
 };
 
@@ -69,6 +70,7 @@ const SECTIONS = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'trends', label: 'Trends', icon: TrendingUp },
   { id: 'tagged-traffic', label: 'Traffic sources', icon: Compass },
+  { id: 'recent-visits', label: 'Recent visits', icon: Users },
   { id: 'recent-downloads', label: 'Recent downloads', icon: Clock3 },
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'devices-versions', label: 'Devices & versions', icon: Laptop },
@@ -452,40 +454,55 @@ function SmallTable({ title, items }: { title: string; items: CountItem[] }) {
   );
 }
 
-function RecentDownloads({ events }: { events: DownloadEvent[] }) {
+function EventLog({ events, kind }: { events: TrafficEvent[]; kind: 'visit' | 'download' }) {
   const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState('*');
+  const tags = Array.from(new Set(events.map((event) => event.tag || UNTAGGED_KEY))).sort();
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return events;
-    return events.filter((event) => Object.values(event).some((value) => String(value || '').toLowerCase().includes(needle)));
-  }, [events, query]);
+    return events.filter((event) => (
+      (tagFilter === '*' || (event.tag || UNTAGGED_KEY) === tagFilter)
+      && (!needle || Object.values(event).some((value) => String(value || '').toLowerCase().includes(needle)))
+    ));
+  }, [events, query, tagFilter]);
 
   return (
     <section className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5 md:p-6">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h3 className="text-lg font-semibold text-white">Download event log</h3>
+          <h3 className="text-lg font-semibold text-white">{kind === 'visit' ? 'Visit' : 'Download'} event log</h3>
           <p className="mt-1 text-sm text-[#747789]">Newest first · showing up to 250 events in this date range.</p>
         </div>
-        <label className="relative flex min-w-[240px] items-center">
-          <Search className="absolute left-3 h-4 w-4 text-[#747789]" />
-          <input
-            aria-label="Search download events"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search visitor, place, device…"
-            className="w-full rounded-lg border border-[#343449] bg-[#030307] py-2.5 pl-9 pr-3 text-sm text-white outline-none focus:border-[#20F4FF]"
-          />
-        </label>
+        <div className="flex flex-wrap gap-2">
+          <select
+            aria-label={`Filter ${kind} events by tag`}
+            value={tagFilter}
+            onChange={(event) => setTagFilter(event.target.value)}
+            className="rounded-lg border border-[#343449] bg-[#030307] px-3 py-2.5 text-sm text-white outline-none focus:border-[#20F4FF]"
+          >
+            <option value="*">All tags</option>
+            {tags.map((tag) => <option key={tag} value={tag}>{tag === UNTAGGED_KEY ? 'Untagged' : tag}</option>)}
+          </select>
+          <label className="relative flex min-w-[240px] items-center">
+            <Search className="absolute left-3 h-4 w-4 text-[#747789]" />
+            <input
+              aria-label={`Search ${kind} events`}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search tag, visitor, place…"
+              className="w-full rounded-lg border border-[#343449] bg-[#030307] py-2.5 pl-9 pr-3 text-sm text-white outline-none focus:border-[#20F4FF]"
+            />
+          </label>
+        </div>
       </div>
       {filtered.length === 0 ? (
-        <p className="py-10 text-center text-sm text-[#747789]">No recorded download events in this range.</p>
+        <p className="py-10 text-center text-sm text-[#747789]">{events.length ? 'No events match these filters.' : `No recorded ${kind} events in this range.`}</p>
       ) : (
         <div className="table-responsive max-h-[560px] overflow-auto">
           <table className="table min-w-[1080px] w-full text-sm">
             <thead className="sticky top-0 z-10 bg-[#080811]">
               <tr>
-                {['Time', 'Visitor', 'Location', 'Device', 'Browser', 'Language', 'Source', 'Tag', 'Version'].map((label) => (
+                {['Time', 'Visitor', 'Location', 'Device', 'Browser', 'Language', 'Source', 'Tag', ...(kind === 'download' ? ['Version'] : [])].map((label) => (
                   <th key={label} className="border-b border-[#242435] px-3 pb-3 text-left font-medium text-[#747789]">{label}</th>
                 ))}
               </tr>
@@ -505,8 +522,8 @@ function RecentDownloads({ events }: { events: DownloadEvent[] }) {
                     <td className="px-3 py-3 text-[#C5C8D8]">{event.browser}</td>
                     <td className="px-3 py-3 text-[#C5C8D8]">{event.language}</td>
                     <td className="max-w-[190px] truncate px-3 py-3 text-[#C5C8D8]" title={event.source}>{event.source}</td>
-                    <td className="px-3 py-3 font-mono text-[#20F4FF]">{event.tag || '—'}</td>
-                    <td className="px-3 py-3 font-mono text-white">{event.version}</td>
+                    <td className="px-3 py-3 font-mono text-[#20F4FF]">{event.tag || 'Untagged'}</td>
+                    {kind === 'download' && <td className="px-3 py-3 font-mono text-white">{event.version}</td>}
                   </tr>
                 );
               })}
@@ -514,7 +531,7 @@ function RecentDownloads({ events }: { events: DownloadEvent[] }) {
           </table>
         </div>
       )}
-      <p className="mt-4 text-xs leading-5 text-[#747789]">Visitor IDs are shortened, secret-keyed fingerprints—not names or raw network addresses. Repeated IDs are only an estimate of the same downloader.</p>
+      <p className="mt-4 text-xs leading-5 text-[#747789]">Visitor IDs are shortened, secret-keyed fingerprints—not names or raw network addresses. Repeated IDs are only an estimate of the same visitor. Filters apply to the displayed events.</p>
     </section>
   );
 }
@@ -837,9 +854,15 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
             </div>
           </section>
 
+          <section id="recent-visits" className="scroll-mt-8 mb-12">
+            <SectionHeading icon={Users} title="Recent visits" subtitle="Individual website visits, with tags such as resume and untagged traffic." />
+            <EventLog events={analytics.recentVisitEvents || []} kind="visit" />
+            <p className="mt-3 text-xs text-[#747789]">Visit events are available from when visit logging was enabled. Earlier aggregate totals cannot be turned into individual events.</p>
+          </section>
+
           <section id="recent-downloads" className="scroll-mt-8 mb-12">
             <SectionHeading icon={Clock3} title="Recent downloads" subtitle="A timestamped, privacy-preserving record of individual download events." />
-            <RecentDownloads events={analytics.recentEvents || []} />
+            <EventLog events={analytics.recentEvents || []} kind="download" />
           </section>
 
           <section id="locations" className="scroll-mt-8 mb-12">

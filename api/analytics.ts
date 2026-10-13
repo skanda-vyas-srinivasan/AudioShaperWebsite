@@ -16,7 +16,7 @@ const DIMENSIONS = ['continents', 'countries', 'regions', 'cities', 'timezones',
 type Dimension = typeof DIMENSIONS[number];
 type Counts = Record<string, number | string> | null;
 type CountItem = { label: string; count: number };
-type DownloadEvent = {
+type TrafficEvent = {
   id: string;
   timestamp: string;
   visitorId: string | null;
@@ -29,29 +29,29 @@ type DownloadEvent = {
   browser: string;
   language: string;
   source: string;
-  version: string;
+  version?: string;
   tag?: string | null;
 };
 
-const parseEvent = (value: unknown): DownloadEvent | null => {
+const parseEvent = (value: unknown): TrafficEvent | null => {
   try {
     const parsed = typeof value === 'string' ? JSON.parse(value) : value;
     if (!parsed || typeof parsed !== 'object') return null;
-    const event = parsed as Partial<DownloadEvent>;
+    const event = parsed as Partial<TrafficEvent>;
     if (typeof event.id !== 'string' || typeof event.timestamp !== 'string') return null;
-    return event as DownloadEvent;
+    return event as TrafficEvent;
   } catch {
     return null;
   }
 };
 
-async function loadRecentEvents(from: Date | null, to: Date | null) {
-  const rawEvents = await redis.lrange<unknown>(EVENT_KEY, 0, MAX_EVENT_SCAN - 1);
+async function loadRecentEvents(key: string, from: Date | null, to: Date | null) {
+  const rawEvents = await redis.lrange<unknown>(key, 0, MAX_EVENT_SCAN - 1);
   const fromTime = from?.getTime() ?? Number.NEGATIVE_INFINITY;
   const toTime = to ? to.getTime() + 86400000 - 1 : Number.POSITIVE_INFINITY;
   return (rawEvents || [])
     .map(parseEvent)
-    .filter((event): event is DownloadEvent => {
+    .filter((event): event is TrafficEvent => {
       if (!event) return false;
       const timestamp = Date.parse(event.timestamp);
       return Number.isFinite(timestamp) && timestamp >= fromTime && timestamp <= toTime;
@@ -195,8 +195,9 @@ export default async function handler(req: Request) {
       };
     }
 
-    const [recentEvents, taggedTraffic] = await Promise.all([
-      loadRecentEvents(from, to),
+    const [recentEvents, recentVisitEvents, taggedTraffic] = await Promise.all([
+      loadRecentEvents(EVENT_KEY, from, to),
+      loadRecentEvents(`${VISITS_PREFIX}:events`, from, to),
       loadTaggedTraffic(range),
     ]);
 
@@ -209,6 +210,7 @@ export default async function handler(req: Request) {
         days: result.days,
         uniqueByDay: result.uniqueByDay,
         recentEvents,
+        recentVisitEvents,
         taggedTraffic,
         ...result.dimensions,
       },

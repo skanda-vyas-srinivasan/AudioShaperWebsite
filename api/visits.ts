@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { isTrustedWebsiteRequest, normalizeTag, UNTAGGED_KEY, VISITS_PREFIX } from '../lib/tags';
+import { requestAnalytics } from '../lib/requestAnalytics';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -26,10 +27,22 @@ export default async function handler(req: Request) {
   const bucket = tag || UNTAGGED_KEY;
 
   try {
-    const day = new Date().toISOString().slice(0, 10);
+    const referrer = 'referrer' in body ? body.referrer : null;
+    const { fingerprint, details } = await requestAnalytics(req, referrer);
+    const timestamp = new Date().toISOString();
+    const day = timestamp.slice(0, 10);
+    const event = {
+      id: crypto.randomUUID(),
+      timestamp,
+      visitorId: fingerprint ? fingerprint.slice(0, 12) : null,
+      tag,
+      ...details,
+    };
     const pipeline = redis.pipeline();
     pipeline.hincrby(`${VISITS_PREFIX}:tags`, bucket, 1);
     pipeline.hincrby(`${VISITS_PREFIX}:day:${day}:tags`, bucket, 1);
+    pipeline.lpush(`${VISITS_PREFIX}:events`, JSON.stringify(event));
+    pipeline.ltrim(`${VISITS_PREFIX}:events`, 0, 1999);
     await pipeline.exec();
     return Response.json({ ok: true }, { headers });
   } catch (error) {

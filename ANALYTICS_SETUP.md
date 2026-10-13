@@ -12,10 +12,17 @@ Configure these Vercel environment variables for Production, Preview, and Develo
 After changing either secret, redeploy the site. Rotating `ANALYTICS_HASH_SECRET` starts a new unique
 identity generation, so the same downloader may be counted again after rotation.
 
-The dashboard also displays a timestamped log of the most recent 2,000 download events. Each event stores
+The dashboard also displays separate timestamped logs for visits and downloads, retaining the
+most recent 2,000 events of each kind and displaying up to 250 per log in the selected date range. Each event stores
 approximate location and classified client details plus a shortened, secret-keyed visitor fingerprint. Raw IP
 addresses and full user-agent strings are never stored. Events recorded before this feature was deployed cannot
 be reconstructed from the existing aggregate counters.
+
+The **Recent visits** section includes tagged and untagged visits. Select `resume` in the tag
+filter to view résumé visits, or search by tag, visitor ID, location, or device. The filters apply
+to the displayed events. Visit logging starts after deploying this update; earlier visit totals
+remain available, but individual historical visit events cannot be recovered. Referring sites
+are stored as hostnames, excluding URL paths and query strings.
 
 Location, device, browser, language, source, version, and unique counts begin only after this code is
 deployed. The existing all-time click counter remains intact, but historical details cannot be reconstructed.

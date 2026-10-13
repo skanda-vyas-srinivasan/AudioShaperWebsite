@@ -25,7 +25,7 @@ export function recordWebsiteVisit(): Promise<void> {
   visitRequest = fetch('/api/visits', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tag }),
+    body: JSON.stringify({ tag, referrer: document.referrer }),
     keepalive: true,
   }).then(() => {}).catch(() => {});
   return visitRequest;

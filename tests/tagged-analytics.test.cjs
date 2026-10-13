@@ -38,6 +38,7 @@ function browser(search, storage = new Map(), blocked = false) {
   const requests = [];
   const module = loadModule('src/taggedVisits.ts', {
     window: { location: { search } },
+    document: { referrer: 'https://www.example.com/resume.pdf' },
     sessionStorage: {
       getItem(key) { if (blocked) throw new Error('Blocked'); return storage.get(key) || null; },
       setItem(key, value) { if (blocked) throw new Error('Blocked'); storage.set(key, value); },
@@ -87,14 +88,14 @@ class MemoryRedis {
   }
 }
 
-function api() {
+function api(globals = {}) {
   MemoryRedis.values.clear();
   const dependencies = { '@upstash/redis': { Redis: MemoryRedis } };
   const cache = new Map();
   return {
-    visits: loadModule('api/visits.ts', {}, dependencies, cache).default,
-    downloads: loadModule('api/downloads.ts', {}, dependencies, cache).default,
-    analytics: loadModule('api/analytics.ts', {}, dependencies, cache).default,
+    visits: loadModule('api/visits.ts', globals, dependencies, cache).default,
+    downloads: loadModule('api/downloads.ts', globals, dependencies, cache).default,
+    analytics: loadModule('api/analytics.ts', globals, dependencies, cache).default,
   };
 }
 
@@ -111,6 +112,7 @@ test('each new tagged page load records a visit; React remounts do not double co
   await Promise.all([first.recordWebsiteVisit(), first.recordWebsiteVisit()]);
   assert.equal(first.requests.length, 1);
   assert.equal(JSON.parse(first.requests[0].body).tag, 'resume');
+  assert.equal(JSON.parse(first.requests[0].body).referrer, 'https://www.example.com/resume.pdf');
   assert.equal(first.getDownloadTag(), 'resume');
   const reloaded = browser('?ref=resume', storage);
   await reloaded.recordWebsiteVisit();
@@ -159,6 +161,8 @@ test('tagged visits and downloads appear together; legacy downloads stay untagge
     { tag: '(untagged)', visits: 0, downloads: 1 },
   ]);
   assert.equal(data.totalDownloads, 2);
+  assert.equal(data.recentVisitEvents.length, 3);
+  assert.ok(data.recentVisitEvents.every(event => event.tag === 'resume'));
   assert.equal(data.recentEvents.filter(event => event.tag === 'resume').length, 1);
   assert.equal(data.recentEvents.filter(event => event.tag === null).length, 1);
   assert.equal(response.headers.get('Cache-Control'), 'private, no-store, max-age=0');
@@ -221,4 +225,72 @@ test('untagged visits and downloads are counted for all time and selected dates'
   const sources = (await (await analytics(admin())).json()).taggedTraffic;
   assert.equal(sources.find(item => item.tag === 'untagged').visits, 1);
   assert.equal(sources.find(item => item.tag === '(untagged)').visits, 2);
+});
+
+test('visit events include request details and match download visitor IDs without storing raw identifiers', async () => {
+  const handlers = api({ process: { env: { ADMIN_ANALYTICS_TOKEN: 'test-admin', ANALYTICS_HASH_SECRET: 'test-hash-secret' } } });
+  const body = { tag: 'resume', referrer: 'https://www.example.com/private/path?token=do-not-store' };
+  const request = (endpoint) => {
+    const req = post(endpoint, body);
+    req.headers.set('x-vercel-forwarded-for', '192.0.2.5');
+    req.headers.set('user-agent', 'Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36');
+    req.headers.set('x-vercel-ip-country', 'US');
+    req.headers.set('x-vercel-ip-country-region', 'CA');
+    req.headers.set('x-vercel-ip-city', 'San%20Francisco');
+    req.headers.set('accept-language', 'en-US,en;q=0.9');
+    return req;
+  };
+  assert.equal((await handlers.visits(request('visits'))).status, 200);
+  assert.equal((await handlers.downloads(request('downloads'))).status, 200);
+  const data = await (await handlers.analytics(admin())).json();
+  const event = data.recentVisitEvents[0];
+  assert.ok(event.id);
+  assert.ok(Number.isFinite(Date.parse(event.timestamp)));
+  assert.equal(event.tag, 'resume');
+  assert.equal(event.country, 'United States');
+  assert.equal(event.region, 'California');
+  assert.equal(event.city, 'San Francisco');
+  assert.equal(event.device, 'Mac');
+  assert.equal(event.browser, 'Chrome');
+  assert.equal(event.language, 'en-US');
+  assert.equal(event.source, 'example.com');
+  assert.match(event.visitorId, /^[a-f0-9]{12}$/);
+  assert.equal(event.visitorId, data.recentEvents[0].visitorId);
+  const serialized = JSON.stringify(event);
+  for (const sensitive of ['192.0.2.5', 'Mozilla/5.0', 'private/path', 'do-not-store', 'test-hash-secret']) {
+    assert.ok(!serialized.includes(sensitive));
+  }
+});
+
+test('visit event log excludes malformed records and filters inclusive UTC dates', async () => {
+  const { analytics } = api();
+  const record = (id, timestamp) => JSON.stringify({ id, timestamp, tag: 'resume' });
+  MemoryRedis.values.set('sonexis:visit-analytics:events', [
+    record('after', '2026-10-14T00:00:00.000Z'),
+    record('end', '2026-10-13T23:59:59.999Z'),
+    'invalid-json',
+    record('invalid-time', 'invalid'),
+    record('start', '2026-10-13T00:00:00.000Z'),
+    record('before', '2026-10-12T23:59:59.999Z'),
+  ]);
+  const filtered = await (await analytics(admin('?from=2026-10-13&to=2026-10-13'))).json();
+  assert.deepEqual(filtered.recentVisitEvents.map(event => event.id), ['end', 'start']);
+  const all = await (await analytics(admin())).json();
+  assert.deepEqual(all.recentVisitEvents.map(event => event.id), ['after', 'end', 'start', 'before']);
+});
+
+test('visit events retain only the newest 2,000 and return at most 250', async () => {
+  const { visits, analytics } = api();
+  MemoryRedis.values.set('sonexis:visit-analytics:events', Array.from({ length: 2000 }, (_, index) => JSON.stringify({
+    id: `visit-${index}`, timestamp: '2026-10-13T00:00:00.000Z', tag: null,
+  })));
+  assert.equal((await visits(post('visits', { tag: 'resume' }))).status, 200);
+  const stored = MemoryRedis.values.get('sonexis:visit-analytics:events');
+  assert.equal(stored.length, 2000);
+  assert.equal(JSON.parse(stored[0]).tag, 'resume');
+  assert.equal(JSON.parse(stored.at(-1)).id, 'visit-1998');
+  const data = await (await analytics(admin())).json();
+  assert.equal(data.recentVisitEvents.length, 250);
+  assert.equal(data.recentVisitEvents[0].tag, 'resume');
+  assert.equal(data.recentVisitEvents.at(-1).id, 'visit-248');
 });

@@ -36,6 +36,7 @@ type TrafficEvent = {
   sessionId?: string;
   network?: Session['network'];
   userAgentKind?: Session['userAgentKind'];
+  uaClassifierVersion?: number;
 };
 
 const parseEvent = (value: unknown): TrafficEvent | null => {
@@ -83,14 +84,15 @@ async function decorateVisits(visits: TrafficEvent[], retainedVisits: TrafficEve
     return {
       ...visit,
       network: session?.network || visit.network || null,
-      classification: classifySession(session, { userAgentKind: visit.userAgentKind, network: visit.network, rapidRepeat: metadataPattern?.rapidRepeat }),
+      classification: classifySession(session, { userAgentKind: visit.userAgentKind, uaClassifierVersion: visit.uaClassifierVersion, network: visit.network, rapidRepeat: metadataPattern?.rapidRepeat }),
       metadataPattern,
       engagement: session ? {
         activeMs: session.activeMs,
         totalMs: Math.max(0, Date.parse(session.lastSeenAt) - Date.parse(session.startedAt)),
         maxScroll: session.maxScroll, clicks: session.clicks, pages: session.pages,
-        ended: Boolean(session.endedAt),
+        ended: Boolean(session.endedAt), observed: session.batches > 0,
       } : null,
+      engagementStatus: session ? session.batches > 0 ? 'recorded' : 'no-batch' : visit.sessionId ? 'expired' : 'historical',
     };
   });
 }
@@ -102,7 +104,7 @@ function resumeStats(visits: Awaited<ReturnType<typeof decorateVisits>>) {
     likelyHuman: resume.filter((visit) => visit.classification.classification === 'Likely human').length,
     likelyAutomated: resume.filter((visit) => visit.classification.classification === 'Likely automated').length,
     uncertain: resume.filter((visit) => visit.classification.classification === 'Uncertain').length,
-    meaningfulEngagement: resume.filter((visit) => visit.engagement && (visit.engagement.activeMs >= 15000 || visit.engagement.clicks > 0 || visit.engagement.maxScroll >= 50 || visit.engagement.pages.length >= 2)).length,
+    meaningfulEngagement: resume.filter((visit) => visit.engagement?.observed && (visit.engagement.activeMs >= 15000 || visit.engagement.clicks > 0 || visit.engagement.maxScroll >= 50 || visit.engagement.pages.length >= 2)).length,
     hosting: resume.filter((visit) => visit.network?.kind === 'hosting').length,
     projectNavigation: resume.filter((visit) => visit.engagement?.pages.some((path) => /^\/projects?\//.test(path)) || false).length,
     metadataOnly: resume.filter((visit) => !visit.engagement).length,

@@ -148,7 +148,7 @@ test('classification uses independent signals and leaves sparse historical visit
   const base = {
     id: 'session', token: 'private', visitId: 'visit', visitorId: null,
     startedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), endedAt: null,
-    activeMs: 0, maxScroll: 0, clicks: 0, pages: ['/'], events: [], batches: 0,
+    activeMs: 0, maxScroll: 0, clicks: 0, pages: ['/'], events: [], batches: 1,
     network: classifyNetwork(null, null), userAgentKind: 'browser', automationHint: false,
     rapidNavigations: 0, requestBurst: false,
   };
@@ -156,8 +156,83 @@ test('classification uses independent signals and leaves sparse historical visit
   assert.equal(classifySession({ ...base, activeMs: 30000 }).classification, 'Likely human');
   assert.equal(classifySession({ ...base, network: classifyNetwork('AS16509', 'Amazon.com, Inc.') }).classification, 'Uncertain');
   assert.equal(classifySession({ ...base, userAgentKind: classifyUserAgent('Proofpoint URL Defense') }).classification, 'Likely automated');
+  assert.equal(classifyUserAgent('Mozilla/5.0 HeadlessChrome/130.0.0.0'), 'automation');
+  assert.equal(classifySession({ ...base, userAgentKind: 'automation', automationHint: true }).classification, 'Uncertain');
+  assert.equal(classifySession({ ...base, userAgentKind: 'bot' }).classification, 'Uncertain');
+  assert.equal(classifySession({ ...base, userAgentKind: 'bot', automationHint: true }).classification, 'Uncertain');
+  assert.equal(classifySession({ ...base, userAgentKind: 'bot', uaClassifierVersion: 2 }).classification, 'Likely automated');
   assert.equal(classifySession(null).classification, 'Uncertain');
   assert.match(classifySession(null).limitation, /historical engagement/);
+});
+
+test('short scrolls are batched before page exit and active time survives visibility change', async () => {
+  let now = Date.parse('2026-11-08T22:39:00.000Z');
+  class FakeDate extends Date {
+    constructor(...args) { if (args.length) super(...args); else super(now); }
+    static now() { return now; }
+  }
+  const listeners = new Map();
+  const timers = new Map();
+  const fetches = [];
+  const beacons = [];
+  let nextTimer = 0;
+  const runTimer = (delay) => {
+    const entry = [...timers].find(([, timer]) => timer.delay === delay);
+    assert.ok(entry, `timer ${delay} exists`);
+    timers.delete(entry[0]);
+    entry[1].callback();
+  };
+  const globals = {
+    Date: FakeDate, Blob,
+    window: {
+      innerHeight: 100, scrollY: 40,
+      addEventListener: (name, callback) => listeners.set(name, callback),
+      removeEventListener: (name) => listeners.delete(name),
+      setInterval: () => 1, clearInterval: () => {},
+      setTimeout: (callback, delay) => { const id = ++nextTimer; timers.set(id, { callback, delay }); return id; },
+      clearTimeout: (id) => timers.delete(id),
+    },
+    document: {
+      visibilityState: 'visible', documentElement: { scrollHeight: 200 },
+      addEventListener: (name, callback) => listeners.set(name, callback),
+      removeEventListener: (name) => listeners.delete(name),
+    },
+    navigator: { webdriver: false, sendBeacon: (_url, body) => { beacons.push(body); return true; } },
+    location: { pathname: '/', href: 'https://sonexis.ink/', origin: 'https://sonexis.ink' },
+    history: { pushState() {}, replaceState() {} },
+    sessionStorage: { getItem: () => null, setItem: () => {} },
+    fetch: (_url, options) => { fetches.push(JSON.parse(options.body)); return Promise.resolve(new Response('{}')); },
+  };
+  const module = loadModule('src/engagementTracker.ts', globals);
+  const stop = module.startEngagement();
+  now += 200;
+  listeners.get('scroll')();
+  now += 100;
+  runTimer(100);
+  module.startEngagement({ sessionId: 'session', sessionToken: 'token' });
+  now += 1400;
+  runTimer(1500);
+  assert.equal(fetches.length, 1);
+  assert.equal(fetches[0].events[0].depth, 40);
+  assert.ok(fetches[0].activeMs >= 1600);
+  now += 2300;
+  globals.document.visibilityState = 'hidden';
+  listeners.get('visibilitychange')();
+  const hiddenBatch = JSON.parse(await beacons[0].text());
+  assert.ok(hiddenBatch.activeMs >= 2200);
+  stop();
+});
+
+test('a new visit without a received batch does not display zero engagement or a human label', async () => {
+  const { visits, analytics } = api();
+  const req = post('visits', { session: true, path: '/' });
+  req.headers.set('user-agent', 'Mozilla/5.0 HeadlessChrome/130.0.0.0');
+  assert.equal((await visits(req)).status, 200);
+  const visit = (await (await analytics(admin('?events=visits'))).json()).events[0];
+  assert.equal(visit.engagementStatus, 'no-batch');
+  assert.equal(visit.engagement.observed, false);
+  assert.equal(visit.classification.evidenceBasis, 'request-only');
+  assert.equal(visit.classification.classification, 'Uncertain');
 });
 
 test('same tab page loads reuse a distinct session while preserving visit counts', async () => {

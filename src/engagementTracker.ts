@@ -3,6 +3,7 @@ import type { EngagementEvent } from '../lib/engagement';
 const STORAGE_KEY = 'sonexis-engagement-session';
 type Credentials = { sessionId: string; sessionToken: string };
 let tracker: (() => void) | null = null;
+let activateTracker: ((credentials: Credentials) => void) | null = null;
 
 export function rememberedSession(): Credentials | null {
   try {
@@ -11,9 +12,16 @@ export function rememberedSession(): Credentials | null {
   } catch { return null; }
 }
 
-export function startEngagement(credentials: Credentials) {
-  if (tracker || !('addEventListener' in window)) return;
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(credentials)); } catch { /* Storage is optional. */ }
+export function startEngagement(credentials?: Credentials) {
+  if (tracker) {
+    if (credentials) activateTracker?.(credentials);
+    return tracker;
+  }
+  if (!('addEventListener' in window)) return;
+  let currentCredentials = credentials || null;
+  if (credentials) {
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(credentials)); } catch { /* Storage is optional. */ }
+  }
   const events: EngagementEvent[] = [];
   let lastActivity = Date.now();
   let lastTick = Date.now();
@@ -21,13 +29,14 @@ export function startEngagement(credentials: Credentials) {
   let maxScroll = 0;
   let lastScrollSent = 0;
   let scrollTimer = 0;
+  let activityFlushTimer = 0;
   let lastPath = location.pathname;
   let navigatingInternal = false;
   let sending = false;
   const stamp = () => new Date().toISOString();
-  const tick = () => {
+  const tick = (visible = document.visibilityState === 'visible') => {
     const now = Date.now();
-    if (document.visibilityState === 'visible') activeMs += Math.min(15000, Math.max(0, Math.min(now, lastActivity + 30000) - lastTick));
+    if (visible) activeMs += Math.min(15000, Math.max(0, Math.min(now, lastActivity + 30000) - lastTick));
     lastTick = now;
   };
   const flush = (beacon = false) => {
@@ -36,11 +45,11 @@ export function startEngagement(credentials: Credentials) {
       lastScrollSent = maxScroll;
       events.push({ type: 'scroll', timestamp: stamp(), depth: maxScroll });
     }
-    if ((sending && !beacon) || (!events.length && activeMs < 1000)) return;
+    if (!currentCredentials || (sending && !beacon) || (!events.length && activeMs < 1000)) return;
     const batch = events.splice(0, 24);
     const duration = Math.min(60000, Math.round(activeMs));
     activeMs -= duration;
-    const body = JSON.stringify({ ...credentials, events: batch.length ? batch : [{ type: 'scroll', timestamp: stamp(), depth: maxScroll }], activeMs: duration, automationHint: navigator.webdriver === true });
+    const body = JSON.stringify({ ...currentCredentials, events: batch.length ? batch : [{ type: 'scroll', timestamp: stamp(), depth: maxScroll }], activeMs: duration, automationHint: navigator.webdriver === true });
     if (beacon && navigator.sendBeacon) {
       if (navigator.sendBeacon('/api/engagement', new Blob([body], { type: 'application/json' }))) return;
     }
@@ -48,6 +57,15 @@ export function startEngagement(credentials: Credentials) {
     void fetch('/api/engagement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: beacon })
       .catch(() => {})
       .finally(() => { sending = false; if (events.length >= 12) flush(); });
+  };
+  const scheduleActivityFlush = () => {
+    if (activityFlushTimer) return;
+    activityFlushTimer = window.setTimeout(() => { activityFlushTimer = 0; flush(); }, 1500);
+  };
+  activateTracker = (nextCredentials) => {
+    currentCredentials = nextCredentials;
+    try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(nextCredentials)); } catch { /* Storage is optional. */ }
+    if (events.length || activeMs >= 1000) scheduleActivityFlush();
   };
   const activity = () => { lastActivity = Date.now(); };
   const scroll = () => {
@@ -57,11 +75,12 @@ export function startEngagement(credentials: Credentials) {
     if (maxScroll - lastScrollSent >= 10 || maxScroll === 100 && lastScrollSent < 100) {
       lastScrollSent = maxScroll;
       events.push({ type: 'scroll', timestamp: stamp(), depth: maxScroll });
-      if (events.length >= 12) flush();
+      if (events.length >= 12) flush(); else scheduleActivityFlush();
     }
   };
   const scheduleScroll = () => {
     activity();
+    scheduleActivityFlush();
     if (!scrollTimer) scrollTimer = window.setTimeout(() => { scrollTimer = 0; scroll(); }, 100);
   };
   const click = (event: MouseEvent) => {
@@ -82,14 +101,16 @@ export function startEngagement(credentials: Credentials) {
     }
     if (!/^[a-z0-9_:/.-]{1,80}$/i.test(target)) target = 'control';
     events.push({ type: 'click', timestamp: stamp(), category, target });
-    if (events.length >= 12) flush();
+    if (events.length >= 12) flush(); else scheduleActivityFlush();
   };
   const page = () => {
     const path = location.pathname;
     if (path !== lastPath) { lastPath = path; activity(); events.push({ type: 'page', timestamp: stamp(), path }); flush(); }
   };
-  const visibility = () => { tick(); if (document.visibilityState === 'hidden') flush(true); else activity(); };
+  const visibility = () => { if (document.visibilityState === 'hidden') { tick(true); flush(true); } else { tick(false); activity(); } };
   const pagehide = () => {
+    if (scrollTimer) { window.clearTimeout(scrollTimer); scrollTimer = 0; scroll(); }
+    if (document.visibilityState === 'visible') tick(true);
     if (!navigatingInternal) events.push({ type: 'end', timestamp: stamp() });
     flush(true);
   };
@@ -108,6 +129,7 @@ export function startEngagement(credentials: Credentials) {
   tracker = () => {
     window.clearInterval(interval);
     if (scrollTimer) window.clearTimeout(scrollTimer);
+    if (activityFlushTimer) window.clearTimeout(activityFlushTimer);
     window.removeEventListener('scroll', scheduleScroll);
     window.removeEventListener('pointerdown', activity);
     window.removeEventListener('keydown', activity);
@@ -119,6 +141,7 @@ export function startEngagement(credentials: Credentials) {
     history.replaceState = originalReplace;
     flush(true);
     tracker = null;
+    activateTracker = null;
   };
   return tracker;
 }

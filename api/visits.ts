@@ -62,7 +62,7 @@ export default async function handler(req: Request) {
       visitorId: fingerprint ? fingerprint.slice(0, 12) : null,
       tag,
       ...details,
-      ...(wantsSession ? { sessionId, network, userAgentKind } : {}),
+      ...(wantsSession ? { sessionId, network, userAgentKind, uaClassifierVersion: 2 } : {}),
     };
     if (sessionId && sessionToken && network) {
       const path = validPath('path' in body ? body.path : null) || '/';
@@ -71,7 +71,7 @@ export default async function handler(req: Request) {
         startedAt: timestamp, lastSeenAt: timestamp, endedAt: null, activeMs: 0,
         maxScroll: 0, clicks: 0, pages: [path],
         events: [{ type: 'page', timestamp, path }], batches: 0, network, userAgentKind,
-        automationHint: false, rapidNavigations: 0, requestBurst: false,
+        automationHint: false, rapidNavigations: 0, requestBurst: false, uaClassifierVersion: 2,
       };
       if (previous) {
         session.lastSeenAt = timestamp;

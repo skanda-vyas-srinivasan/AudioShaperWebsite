@@ -3,8 +3,8 @@ export type Network = { asn: string | null; organization: string | null; provide
 export type Session = {
   id: string; token: string; visitId: string; visitorId: string | null; startedAt: string; lastSeenAt: string;
   endedAt: string | null; activeMs: number; maxScroll: number; clicks: number; pages: string[];
-  events: EngagementEvent[]; batches: number; network: Network; userAgentKind: 'bot' | 'scanner' | 'browser' | 'unknown';
-  automationHint: boolean; rapidNavigations: number; requestBurst: boolean;
+  events: EngagementEvent[]; batches: number; network: Network; userAgentKind: 'bot' | 'scanner' | 'automation' | 'browser' | 'unknown';
+  automationHint: boolean; rapidNavigations: number; requestBurst: boolean; uaClassifierVersion?: number;
 };
 
 export const SESSION_TTL = 7 * 86400;
@@ -13,7 +13,8 @@ const safeText = (value: unknown, max = 100) => typeof value === 'string' ? valu
 
 export function classifyUserAgent(ua: string): Session['userAgentKind'] {
   if (/proofpoint|mimecast|barracuda|safelinks|urlscan|zscaler|netskope|symantec|defender.*(scan|link)/i.test(ua)) return 'scanner';
-  if (/bot\b|crawler|spider|headlesschrome|phantomjs|selenium|playwright|puppeteer|curl\/|wget\/|python-requests|go-http-client|httpclient/i.test(ua)) return 'bot';
+  if (/headlesschrome|phantomjs|selenium|playwright|puppeteer/i.test(ua)) return 'automation';
+  if (/bot\b|crawler|spider|curl\/|wget\/|python-requests|go-http-client|httpclient/i.test(ua)) return 'bot';
   if (/mozilla\/5\.0/i.test(ua)) return 'browser';
   return 'unknown';
 }
@@ -27,14 +28,17 @@ export function classifyNetwork(asn: unknown, organization: unknown): Network {
   return { asn: number, organization: org, provider: org, kind: hosting ? 'hosting' : 'unknown', cloud: cloud || null, vpnProxy: 'unknown' };
 }
 
-export function classifySession(session: Session | null, legacy: { userAgentKind?: string; network?: Network; rapidRepeat?: boolean } = {}) {
+export function classifySession(session: Session | null, legacy: { userAgentKind?: string; network?: Network; rapidRepeat?: boolean; uaClassifierVersion?: number } = {}) {
   const ua = session?.userAgentKind || legacy.userAgentKind;
+  const uaVersion = session?.uaClassifierVersion || legacy.uaClassifierVersion;
   const network = session?.network || legacy.network;
   const signals: { level: 'signature' | 'weak' | 'engagement'; description: string }[] = [];
   let risk = 0;
   if (ua === 'scanner') { risk += 5; signals.push({ level: 'signature', description: 'Security scanner user-agent signature (unverified)' }); }
-  else if (ua === 'bot') { risk += 5; signals.push({ level: 'signature', description: 'Bot or automation user-agent signature (unverified)' }); }
-  if (session?.automationHint) { risk += 2; signals.push({ level: 'weak', description: 'Browser reported an automation indicator' }); }
+  else if (ua === 'bot' && uaVersion === 2) { risk += 5; signals.push({ level: 'signature', description: 'Bot or script-client user-agent signature (unverified)' }); }
+  else if (ua === 'bot') { risk += 2; signals.push({ level: 'weak', description: 'Legacy bot category also included browser automation; original user agent was not retained' }); }
+  else if (ua === 'automation') { risk += 2; signals.push({ level: 'weak', description: 'Browser automation user-agent marker; a person may still be driving this browser' }); }
+  if (session?.automationHint && ua !== 'automation' && !(ua === 'bot' && uaVersion !== 2)) { risk += 2; signals.push({ level: 'weak', description: 'Browser reported an automation indicator' }); }
   if (network?.kind === 'hosting') { risk += 1; signals.push({ level: 'weak', description: `Hosting or cloud ASN${network.cloud ? ` (${network.cloud})` : ''}` }); }
   if (session?.requestBurst) { risk += 2; signals.push({ level: 'weak', description: 'Repeated rapid event batches' }); }
   if (!session && legacy.rapidRepeat) { risk += 2; signals.push({ level: 'weak', description: 'Several recorded visits share this shortened visitor ID within 20 seconds; could be refreshes or automation' }); }
@@ -42,13 +46,13 @@ export function classifySession(session: Session | null, legacy: { userAgentKind
   if (session && session.endedAt && Date.parse(session.endedAt) - Date.parse(session.startedAt) < 3000 && session.pages.length <= 1 && session.clicks === 0) {
     risk += 1; signals.push({ level: 'weak', description: 'Very short observed session' });
   }
-  const engaged = Boolean(session && (session.activeMs >= 15000 || session.clicks > 0 || session.maxScroll >= 50 || session.pages.length >= 2));
+  const engaged = Boolean(session && session.batches > 0 && (session.activeMs >= 15000 || session.clicks > 0 || session.maxScroll >= 50 || session.pages.length >= 2));
   if (engaged) signals.push({ level: 'engagement', description: 'Observable engagement; client reported and not proof of a human' });
   const classification = risk >= 4 ? 'Likely automated' : risk <= 1 && engaged ? 'Likely human' : 'Uncertain';
   return {
     classification, score: risk, signals,
-    evidenceBasis: session ? 'session' : 'metadata-only',
-    limitation: session ? 'Client events can be simulated or blocked.' : 'Metadata only: historical engagement was not recorded. Matching visitor IDs and nearby timestamps do not establish a session or identify a person.',
+    evidenceBasis: session ? session.batches > 0 ? 'session' : 'request-only' : 'metadata-only',
+    limitation: session ? session.batches > 0 ? 'Client events can be simulated or blocked.' : 'No engagement batch has been received for this session.' : 'Metadata only: historical engagement was not recorded. Matching visitor IDs and nearby timestamps do not establish a session or identify a person.',
   };
 }
 

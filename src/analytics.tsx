@@ -38,8 +38,9 @@ type TrafficEvent = {
   os?: string;
   sessionId?: string;
   network?: { asn: string | null; organization: string | null; provider: string | null; kind: string; cloud: string | null; vpnProxy: string } | null;
-  classification?: { classification: string; score: number; signals: { level: string; description: string }[]; limitation: string; evidenceBasis: 'session' | 'metadata-only' };
-  engagement?: { activeMs: number; totalMs: number; maxScroll: number; clicks: number; pages: string[]; ended: boolean } | null;
+  classification?: { classification: string; score: number; signals: { level: string; description: string }[]; limitation: string; evidenceBasis: 'session' | 'request-only' | 'metadata-only' };
+  engagement?: { activeMs: number; totalMs: number; maxScroll: number; clicks: number; pages: string[]; ended: boolean; observed: boolean } | null;
+  engagementStatus?: 'recorded' | 'no-batch' | 'expired' | 'historical';
   metadataPattern?: { basis: 'retained-visit-metadata'; nearbyCount: number; rapidRepeat: boolean; nearbyVisits: { id: string; timestamp: string; tag: string | null }[] } | null;
 };
 type ResumeStats = { coverage: string; total: number; likelyHuman: number; likelyAutomated: number; uncertain: number; meaningfulEngagement: number; hosting: number; projectNavigation: number; metadataOnly: number; rapidRepeat: number };
@@ -590,6 +591,7 @@ function EventLog({ events, kind, token, from, to }: {
 }
 
 const duration = (ms: number | undefined) => ms === undefined ? 'Not recorded' : `${Math.round(ms / 1000)}s`;
+const unavailableEngagement = (visit: TrafficEvent) => visit.engagementStatus === 'no-batch' ? 'No batch received' : visit.engagementStatus === 'expired' ? 'Session expired' : 'Not recorded';
 
 function VisitEngagement({ token, from, to, resumeOnly = false, summary, tags = [] }: {
   token: string; from: string; to: string; resumeOnly?: boolean; summary?: ResumeStats; tags?: string[];
@@ -655,20 +657,20 @@ function VisitEngagement({ token, from, to, resumeOnly = false, summary, tags = 
         <td className="px-3 py-3">{[visit.city, visit.region, visit.country].filter((part) => part && part !== 'Unknown').join(', ') || 'Unknown'}</td>
         <td className="px-3 py-3">{visit.device || 'Unknown'} / {visit.browser || 'Unknown'} / {visit.os || 'Not recorded'}</td>
         <td className="px-3 py-3">{visit.source || 'Unknown'}<div className="font-mono text-[#20F4FF]">{visit.tag || 'Untagged'}</div></td>
-        <td className="px-3 py-3">{duration(visit.engagement?.activeMs)} / {duration(visit.engagement?.totalMs)}</td>
-        <td className="px-3 py-3">{visit.engagement ? `${visit.engagement.maxScroll}% / ${visit.engagement.clicks}` : 'Not recorded'}</td>
+        <td className="px-3 py-3">{visit.engagement?.observed ? `${duration(visit.engagement.activeMs)} / ${duration(visit.engagement.totalMs)}` : unavailableEngagement(visit)}</td>
+        <td className="px-3 py-3">{visit.engagement?.observed ? `${visit.engagement.maxScroll}% / ${visit.engagement.clicks}` : unavailableEngagement(visit)}</td>
         <td className="px-3 py-3">{visit.engagement?.pages.join(', ') || 'Not recorded'}</td>
         <td className="px-3 py-3">{visit.network?.kind || 'Not recorded'}<div className="text-xs text-[#747789]">{[visit.network?.asn, visit.network?.organization].filter(Boolean).join(' · ') || 'ASN unavailable'}</div></td>
         <td className="px-3 py-3">{visit.metadataPattern ? visit.metadataPattern.nearbyCount > 1 ? `${visit.metadataPattern.nearbyCount} recorded visits within ±30s` : 'No nearby repeat' : 'Not available'}{visit.metadataPattern?.rapidRepeat && <div className="text-xs text-[#FFB454]">Rapid repeat</div>}</td>
-        <td className="px-3 py-3">{visit.classification?.classification || 'Uncertain'}<div className="text-xs text-[#747789]">{visit.classification?.evidenceBasis === 'metadata-only' ? 'Metadata only · ' : ''}{visit.classification?.signals.map((signal) => signal.description).join('; ') || 'Insufficient data'}</div></td>
+        <td className="px-3 py-3">{visit.classification?.classification || 'Uncertain'}<div className="text-xs text-[#747789]">{visit.classification?.evidenceBasis === 'metadata-only' ? 'Metadata only · ' : visit.classification?.evidenceBasis === 'request-only' ? 'No client events · ' : ''}{visit.classification?.signals.map((signal) => signal.description).join('; ') || 'Insufficient data'}</div></td>
       </tr>)}</tbody></table></div>}
       <p className="mt-4 text-xs leading-5 text-[#747789]">Active time and interactions are browser reported and may be blocked or simulated. Historical timing patterns compare actual retained visits with the same shortened visitor ID; they do not prove one person, one session, or automation. A lack of clicks or scrolling alone is never treated as bot evidence.</p>
     </div>
     {selected && <div role="dialog" aria-label="Session detail" className="rounded-2xl border border-[#343449] bg-[#080811] p-5 md:p-6">
       <div className="flex items-start justify-between gap-3"><h3 className="text-lg font-semibold text-white">Visitor {selected.visitorId ? `#${selected.visitorId}` : 'unavailable'}</h3><button onClick={() => setSelected(null)} className="text-sm text-[#20F4FF]">Close</button></div>
-      <p className="mt-2 text-sm text-[#C5C8D8]">{selected.classification?.classification || 'Uncertain'} · {selected.classification?.evidenceBasis === 'metadata-only' ? 'Metadata only' : 'Session evidence'} · score {selected.classification?.score ?? 0} · {selected.classification?.limitation}</p>
+      <p className="mt-2 text-sm text-[#C5C8D8]">{selected.classification?.classification || 'Uncertain'} · {selected.classification?.evidenceBasis === 'metadata-only' ? 'Metadata only' : selected.classification?.evidenceBasis === 'request-only' ? 'No client events' : 'Session evidence'} · score {selected.classification?.score ?? 0} · {selected.classification?.limitation}</p>
       <p className="mt-2 text-xs text-[#747789]">{selected.classification?.signals.map((signal) => `${signal.level}: ${signal.description}`).join(' · ') || 'Insufficient data'}</p>
-      <p className="mt-3 text-sm text-[#C5C8D8]">Active: {duration(selected.engagement?.activeMs)} · Total observed: {duration(selected.engagement?.totalMs)} · Scroll: {selected.engagement ? `${selected.engagement.maxScroll}%` : 'Not recorded'} · Clicks: {selected.engagement?.clicks ?? 'Not recorded'} · Pages: {selected.engagement?.pages.join(', ') || 'Not recorded'}</p>
+      <p className="mt-3 text-sm text-[#C5C8D8]">{selected.engagement?.observed ? `Active: ${duration(selected.engagement.activeMs)} · Total observed: ${duration(selected.engagement.totalMs)} · Scroll: ${selected.engagement.maxScroll}% · Clicks: ${selected.engagement.clicks}` : unavailableEngagement(selected)} · Pages: {selected.engagement?.pages.join(', ') || 'Not recorded'}</p>
       <h4 className="mt-5 text-sm font-semibold text-white">{selected.sessionId ? 'Timeline' : 'Recorded visit timestamps'}</h4>
       {!selected.sessionId ? <div className="mt-2 text-sm text-[#747789]"><p>Session events were not recorded for this visit.</p>{selected.metadataPattern && <div className="mt-4"><h5 className="font-medium text-[#C5C8D8]">Retained visits with this shortened ID, including this visit</h5><p className="mt-1 text-xs">These are separate recorded page loads, not a reconstructed session.</p><ol className="mt-2 space-y-1">{selected.metadataPattern.nearbyVisits.map((visit) => <li key={visit.id}>{new Date(visit.timestamp).toLocaleString()} · {visit.tag || 'Untagged'} · visit #{visit.id.slice(0, 8)}</li>)}</ol></div>}</div> : !detail ? <p className="mt-2 text-sm text-[#747789]">Loading or no longer retained.</p> : <ol className="mt-3 space-y-2">{detail.session.events.map((event, index) => <li key={`${event.timestamp}-${index}`} className="flex gap-3 border-l border-[#343449] pl-3 text-sm text-[#C5C8D8]"><time className="font-mono text-[#747789]">{new Date(event.timestamp).toLocaleTimeString()}</time><span>{event.type === 'page' ? `Page loaded: ${event.path}` : event.type === 'scroll' ? `Scrolled to ${event.depth}%` : event.type === 'click' ? `Clicked ${event.category}: ${event.target}` : 'Session ended'}</span></li>)}</ol>}
     </div>}

@@ -25,15 +25,17 @@ export function recordWebsiteVisit(): Promise<void> {
   const tag = getDownloadTag();
   const privacyOptOut = typeof navigator !== 'undefined' && (navigator.doNotTrack === '1' || (navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl === true);
   if (privacyOptOut) return Promise.resolve();
+  const stopPendingTracking = startEngagement();
   visitRequest = fetch('/api/visits', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tag, referrer: document.referrer, session: true, path: window.location.pathname || '/', ...rememberedSession() }),
     keepalive: true,
   }).then(async (response) => {
-    if (!response.ok) return;
+    if (!response.ok) { stopPendingTracking?.(); return; }
     const data = await response.json();
     if (data.sessionId && data.sessionToken) startEngagement({ sessionId: data.sessionId, sessionToken: data.sessionToken });
-  }).catch(() => {});
+    else stopPendingTracking?.();
+  }).catch(() => { stopPendingTracking?.(); });
   return visitRequest;
 }

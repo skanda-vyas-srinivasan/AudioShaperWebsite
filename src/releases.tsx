@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { ArrowLeft } from 'lucide-react';
 import { BackgroundAnimation } from './components/BackgroundAnimation';
 import './index.css';
+import { recordWebsiteVisit } from './taggedVisits';
 
 type Release = {
   version: string;
@@ -79,6 +80,7 @@ const RELEASES: Release[] = [
 ];
 
 function ReleasesPage() {
+  React.useEffect(() => { void recordWebsiteVisit(); }, []);
   return (
     <div className="min-h-screen bg-[#030307] text-white font-sans selection:bg-[#20F4FF]/30 overflow-x-hidden">
       <BackgroundAnimation />

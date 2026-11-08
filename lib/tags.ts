@@ -14,10 +14,11 @@ export function isTrustedWebsiteRequest(req: Request): boolean {
   if (!source) return false;
   try {
     const hostname = new URL(source).hostname;
-    return hostname === 'sonexis.ink'
+    const requestOrigin = new URL(req.url).origin;
+    return new URL(source).origin === requestOrigin || hostname === 'sonexis.ink'
       || hostname === 'www.sonexis.ink'
       || hostname === 'localhost'
-      || hostname.endsWith('.vercel.app');
+      || /^sonexis-[a-z0-9-]+\.vercel\.app$/.test(hostname);
   } catch {
     return false;
   }

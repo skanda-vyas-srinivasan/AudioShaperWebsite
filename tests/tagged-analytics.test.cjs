@@ -19,7 +19,7 @@ function loadModule(relativePath, globals = {}, dependencies = {}, cache = new M
   }).outputText;
   const context = {
     module, exports: module.exports, console, URL, URLSearchParams,
-    Request, Response, TextEncoder, crypto: webcrypto,
+    Request, Response, TextEncoder, AbortSignal, crypto: webcrypto,
     process: { env: { ADMIN_ANALYTICS_TOKEN: 'test-admin' } },
     ...globals,
     require(specifier) {
@@ -51,6 +51,10 @@ function browser(search, storage = new Map(), blocked = false) {
 class MemoryRedis {
   static values = new Map();
   async get(key) { return MemoryRedis.values.get(key) || null; }
+  async incr(key) { const count = (MemoryRedis.values.get(key) || 0) + 1; MemoryRedis.values.set(key, count); return count; }
+  async expire() { return 1; }
+  async set(key, value) { MemoryRedis.values.set(key, value); return 'OK'; }
+  async mget(...keys) { return keys.map((key) => MemoryRedis.values.get(key) || null); }
   async hgetall(key) { return MemoryRedis.values.get(key) || null; }
   async hkeys(key) { return Object.keys(await this.hgetall(key) || {}); }
   async pfcount() { return 0; }
@@ -94,6 +98,7 @@ function api(globals = {}) {
   const cache = new Map();
   return {
     visits: loadModule('api/visits.ts', globals, dependencies, cache).default,
+    engagement: loadModule('api/engagement.ts', globals, dependencies, cache).default,
     downloads: loadModule('api/downloads.ts', globals, dependencies, cache).default,
     analytics: loadModule('api/analytics.ts', globals, dependencies, cache).default,
   };
@@ -101,6 +106,176 @@ function api(globals = {}) {
 
 const post = (endpoint, body, origin = 'https://sonexis.ink') => new Request(`https://sonexis.ink/api/${endpoint}`, {
   method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+});
+
+test('session batches attach to the visit, reject forged data, and keep the bearer token private', async () => {
+  const { visits, engagement, analytics } = api({ process: { env: { ADMIN_ANALYTICS_TOKEN: 'test-admin', ANALYTICS_HASH_SECRET: 'test-hash-secret' } } });
+  const visit = post('visits', { tag: 'resume', session: true, path: '/' });
+  visit.headers.set('x-vercel-forwarded-for', '192.0.2.5');
+  visit.headers.set('user-agent', 'Mozilla/5.0 Chrome/130');
+  const response = await visits(visit);
+  assert.equal(response.status, 200);
+  const credentials = await response.json();
+  assert.match(credentials.sessionId, /^[a-f0-9-]{36}$/);
+  const batch = (changes = {}) => {
+    const req = post('engagement', {
+      sessionId: credentials.sessionId, sessionToken: credentials.sessionToken, activeMs: 16000,
+      events: [
+        { type: 'scroll', timestamp: new Date().toISOString(), depth: 65 },
+        { type: 'click', timestamp: new Date().toISOString(), category: 'github', target: 'github.com' },
+      ], ...changes,
+    });
+    req.headers.set('x-vercel-forwarded-for', '192.0.2.5');
+    req.headers.set('user-agent', 'Mozilla/5.0 Chrome/130');
+    return req;
+  };
+  assert.equal((await engagement(batch({ sessionToken: '0'.repeat(36) }))).status, 403);
+  assert.equal((await engagement(batch({ events: [{ type: 'click', timestamp: new Date().toISOString(), category: 'link', target: 'private?token=secret' }] }))).status, 400);
+  assert.equal((await engagement(batch())).status, 200);
+  const data = await (await analytics(admin('?events=visits&tag=resume'))).json();
+  assert.equal(data.events[0].sessionId, credentials.sessionId);
+  assert.equal(data.events[0].engagement.maxScroll, 65);
+  assert.equal(data.events[0].engagement.clicks, 1);
+  assert.equal(data.events[0].classification.classification, 'Likely human');
+  assert.ok(!JSON.stringify(data).includes(credentials.sessionToken));
+  const detail = await (await analytics(admin(`?session=${credentials.sessionId}`))).json();
+  assert.equal(detail.session.events.length, 3);
+  assert.ok(!JSON.stringify(detail).includes(credentials.sessionToken));
+});
+
+test('classification uses independent signals and leaves sparse historical visits uncertain', async () => {
+  const { classifySession, classifyNetwork, classifyUserAgent } = loadModule('lib/engagement.ts');
+  const base = {
+    id: 'session', token: 'private', visitId: 'visit', visitorId: null,
+    startedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), endedAt: null,
+    activeMs: 0, maxScroll: 0, clicks: 0, pages: ['/'], events: [], batches: 0,
+    network: classifyNetwork(null, null), userAgentKind: 'browser', automationHint: false,
+    rapidNavigations: 0, requestBurst: false,
+  };
+  assert.equal(classifySession(base).classification, 'Uncertain');
+  assert.equal(classifySession({ ...base, activeMs: 30000 }).classification, 'Likely human');
+  assert.equal(classifySession({ ...base, network: classifyNetwork('AS16509', 'Amazon.com, Inc.') }).classification, 'Uncertain');
+  assert.equal(classifySession({ ...base, userAgentKind: classifyUserAgent('Proofpoint URL Defense') }).classification, 'Likely automated');
+  assert.equal(classifySession(null).classification, 'Uncertain');
+  assert.match(classifySession(null).limitation, /historical engagement/);
+});
+
+test('same tab page loads reuse a distinct session while preserving visit counts', async () => {
+  const { visits, analytics } = api();
+  const first = await (await visits(post('visits', { tag: 'resume', session: true, path: '/' }))).json();
+  const second = await (await visits(post('visits', { tag: 'resume', session: true, path: '/releases.html', sessionId: first.sessionId, sessionToken: first.sessionToken }))).json();
+  assert.equal(second.sessionId, first.sessionId);
+  const data = await (await analytics(admin())).json();
+  assert.equal(data.taggedTraffic.find((item) => item.tag === 'resume').visits, 2);
+  assert.deepEqual(Array.from(data.recentVisitEvents[0].engagement.pages), ['/', '/releases.html']);
+  assert.equal(data.resumeStats.total, 2);
+});
+
+test('client tracker batches semantic events and removes its listeners', async () => {
+  const storage = new Map();
+  const listeners = new Map();
+  const sent = [];
+  const on = (name, callback) => listeners.set(name, callback);
+  const off = (name) => listeners.delete(name);
+  const globals = {
+    window: { innerHeight: 100, scrollY: 100, addEventListener: on, removeEventListener: off, setInterval: () => 1, clearInterval: () => {}, setTimeout: (callback) => { callback(); return 1; }, clearTimeout: () => {} },
+    document: { visibilityState: 'visible', documentElement: { scrollHeight: 200 }, addEventListener: on, removeEventListener: off },
+    navigator: { webdriver: false, sendBeacon: (url, body) => { sent.push({ url, body }); return true; } },
+    location: { pathname: '/', href: 'https://sonexis.ink/', origin: 'https://sonexis.ink' },
+    history: { pushState() {}, replaceState() {} },
+    sessionStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
+    Blob, fetch: () => Promise.resolve(new Response('{}')),
+  };
+  const tracker = loadModule('src/engagementTracker.ts', globals);
+  const stop = tracker.startEngagement({ sessionId: 'session', sessionToken: 'token' });
+  assert.equal(tracker.rememberedSession().sessionId, 'session');
+  listeners.get('scroll')();
+  listeners.get('click')({ target: { closest: () => ({ tagName: 'A', dataset: {}, id: '', getAttribute: () => 'https://github.com/example/repo' }) } });
+  globals.document.visibilityState = 'hidden';
+  listeners.get('visibilitychange')();
+  assert.equal(sent[0].url, '/api/engagement');
+  const payload = JSON.parse(await sent[0].body.text());
+  assert.equal(payload.events[0].depth, 100);
+  assert.equal(payload.events[1].category, 'github');
+  assert.equal(payload.events[1].target, 'github.com');
+  stop();
+  assert.equal(listeners.size, 0);
+});
+
+test('optional IPinfo enrichment stores only ASN metadata and reports hosting as a weak signal', async () => {
+  let requested = '';
+  const network = loadModule('lib/network.ts', {
+    process: { env: { IPINFO_TOKEN: 'test-token' } },
+    fetch: async (url) => { requested = url; return Response.json({ ip: '192.0.2.5', asn: 'AS16509', as_name: 'Amazon.com, Inc.' }); },
+  });
+  const req = new Request('https://sonexis.ink/api/visits', { headers: { 'x-vercel-forwarded-for': '192.0.2.5' } });
+  const result = await network.networkForRequest(req);
+  assert.equal(result.asn, 'AS16509');
+  assert.equal(result.cloud, 'AWS');
+  assert.equal(result.kind, 'hosting');
+  assert.equal(result.vpnProxy, 'unknown');
+  assert.ok(requested.includes('192.0.2.5'));
+  assert.ok(!JSON.stringify(result).includes('192.0.2.5'));
+});
+
+test('resume filters use retained visits and never invent historical engagement', async () => {
+  const { analytics } = api();
+  MemoryRedis.values.set('sonexis:visit-analytics:events', [
+    JSON.stringify({ id: 'old-resume', timestamp: new Date().toISOString(), tag: 'resume', city: 'Seattle', region: 'Washington', country: 'United States', source: 'example.com' }),
+    JSON.stringify({ id: 'other', timestamp: new Date().toISOString(), tag: 'portfolio', city: 'Paris', region: 'Unknown', country: 'France', source: 'example.org' }),
+  ]);
+  const data = await (await analytics(admin('?events=visits&tag=resume&classification=uncertain&location=Seattle&source=example.com'))).json();
+  assert.equal(data.matchingCount, 1);
+  assert.equal(data.events[0].id, 'old-resume');
+  assert.equal(data.events[0].engagement, null);
+  assert.equal(data.events[0].classification.classification, 'Uncertain');
+  assert.equal((await (await analytics(admin())).json()).resumeStats.uncertain, 1);
+});
+
+test('historical metadata shows only recorded nearby visits and keeps timing-only cases uncertain', async () => {
+  const { recordedPatterns } = loadModule('lib/historicalVisits.ts');
+  const visitorId = 'abcdef123456';
+  const baseTime = Date.parse('2026-10-13T12:00:00.000Z');
+  const record = (id, seconds, tag = 'resume', idOverride = visitorId) => ({
+    id, timestamp: new Date(baseTime + seconds * 1000).toISOString(), visitorId: idOverride,
+    tag, city: 'Seattle', region: 'Washington', country: 'United States', source: 'example.com',
+  });
+  const records = [record('a', 0), record('b', 3), record('c', 7), record('d', 8, 'portfolio'), record('far', 3600), record('different', 4, 'resume', '123456abcdef')];
+  const patterns = recordedPatterns(records);
+  assert.equal(patterns.get('b').nearbyCount, 4);
+  assert.equal(patterns.get('b').rapidRepeat, true);
+  assert.deepEqual(Array.from(patterns.get('b').nearbyVisits.map((visit) => visit.id)), ['a', 'b', 'c', 'd']);
+  assert.equal(patterns.get('far').rapidRepeat, false);
+  assert.equal(patterns.get('different').nearbyCount, 1);
+
+  const { analytics } = api();
+  MemoryRedis.values.set('sonexis:visit-analytics:events', records.map((visit) => JSON.stringify(visit)));
+  const response = await analytics(admin('?events=visits&tag=resume&pattern=rapid-repeat&from=2026-10-13&to=2026-10-13'));
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.deepEqual(data.events.map((event) => event.id), ['a', 'b', 'c']);
+  assert.equal(data.matchingCount, 3);
+  assert.ok(data.events.every((event) => event.engagement === null && event.classification.classification === 'Uncertain'));
+  assert.equal(data.events[1].classification.score, 2);
+  assert.equal(data.events[1].classification.evidenceBasis, 'metadata-only');
+  assert.equal(data.events[1].metadataPattern.nearbyVisits.length, 4);
+  const summary = (await (await analytics(admin('?from=2026-10-13&to=2026-10-13'))).json()).resumeStats;
+  assert.equal(summary.metadataOnly, 5);
+  assert.equal(summary.rapidRepeat, 3);
+});
+
+test('visit ingestion rate limits repeated fingerprinted requests', async () => {
+  const { visits, analytics } = api({ process: { env: { ADMIN_ANALYTICS_TOKEN: 'test-admin', ANALYTICS_HASH_SECRET: 'test-hash-secret' } } });
+  const request = () => {
+    const req = post('visits', { tag: 'resume' });
+    req.headers.set('x-vercel-forwarded-for', '192.0.2.9');
+    req.headers.set('user-agent', 'Mozilla/5.0');
+    return req;
+  };
+  for (let index = 0; index < 60; index += 1) assert.equal((await visits(request())).status, 200);
+  assert.equal((await visits(request())).status, 429);
+  const data = await (await analytics(admin())).json();
+  assert.equal(data.taggedTraffic.find((item) => item.tag === 'resume').visits, 60);
 });
 const admin = (query = '') => new Request(`https://sonexis.ink/api/analytics${query}`, {
   headers: { authorization: 'Bearer test-admin' },
@@ -325,7 +500,7 @@ test('filtered event reads preserve authentication, validation, and download-log
   const query = '?events=downloads&tag=%28untagged%29';
   assert.equal((await analytics(new Request(`https://sonexis.ink/api/analytics${query}`))).status, 401);
   assert.deepEqual((await (await analytics(admin(query))).json()).events.map(event => event.id), ['untagged-download']);
-  for (const invalid of ['?events=invalid', '?events=visits&tag=bad%20tag', '?events=visits&from=invalid']) {
+  for (const invalid of ['?events=invalid', '?events=visits&tag=bad%20tag', '?events=visits&from=invalid', '?events=visits&pattern=unknown']) {
     assert.equal((await analytics(admin(invalid))).status, 400);
   }
 });

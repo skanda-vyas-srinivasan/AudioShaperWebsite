@@ -10,6 +10,7 @@ export function NavHeader({ onDownload }: NavHeaderProps) {
       <nav className="flex items-center gap-4 text-xs font-semibold uppercase tracking-[0.22em] sm:gap-6 sm:text-sm">
         <button
           type="button"
+          data-analytics="download_navigation"
           onClick={onDownload}
           className="text-[#C5C8D8] transition-colors hover:text-[#20F4FF]"
         >

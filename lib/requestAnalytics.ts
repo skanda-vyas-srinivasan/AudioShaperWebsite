@@ -27,6 +27,15 @@ const classifyDevice = (userAgent: string) => {
   return 'Other';
 };
 
+const classifyOS = (userAgent: string) => {
+  if (/iPhone|iPad|iPod/.test(userAgent)) return 'iOS / iPadOS';
+  if (/Android/.test(userAgent)) return 'Android';
+  if (/Mac OS X|Macintosh/.test(userAgent)) return 'macOS';
+  if (/Windows/.test(userAgent)) return 'Windows';
+  if (/Linux/.test(userAgent)) return 'Linux';
+  return 'Other';
+};
+
 const sourceFrom = (value: unknown) => {
   if (typeof value !== 'string' || !value) return 'Direct / unknown';
   try {
@@ -77,6 +86,7 @@ export async function requestAnalytics(req: Request, referrer: unknown) {
       country, region, city, continent, timezone, language,
       device: classifyDevice(userAgent),
       browser: classifyBrowser(userAgent),
+      os: classifyOS(userAgent),
       source: sourceFrom(referrer),
     },
   };

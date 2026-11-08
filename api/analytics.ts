@@ -1,6 +1,8 @@
 import { Redis } from '@upstash/redis';
 import { readableLocation } from './geo';
 import { normalizeTag, UNTAGGED_KEY, VISITS_PREFIX } from '../lib/tags';
+import { classifySession, Session, sessionKey } from '../lib/engagement';
+import { recordedPatterns } from '../lib/historicalVisits';
 
 const redis = new Redis({
   url: process.env.KV_REST_API_URL!,
@@ -31,6 +33,9 @@ type TrafficEvent = {
   source: string;
   version?: string;
   tag?: string | null;
+  sessionId?: string;
+  network?: Session['network'];
+  userAgentKind?: Session['userAgentKind'];
 };
 
 const parseEvent = (value: unknown): TrafficEvent | null => {
@@ -45,7 +50,7 @@ const parseEvent = (value: unknown): TrafficEvent | null => {
   }
 };
 
-async function loadRecentEvents(key: string, from: Date | null, to: Date | null, tag: string | null = null) {
+async function loadRecentEvents(key: string, from: Date | null, to: Date | null, tag: string | null = null, limit = MAX_RETURNED_EVENTS) {
   const rawEvents = await redis.lrange<unknown>(key, 0, MAX_EVENT_SCAN - 1);
   const fromTime = from?.getTime() ?? Number.NEGATIVE_INFINITY;
   const toTime = to ? to.getTime() + 86400000 - 1 : Number.POSITIVE_INFINITY;
@@ -57,7 +62,52 @@ async function loadRecentEvents(key: string, from: Date | null, to: Date | null,
       return Number.isFinite(timestamp) && timestamp >= fromTime && timestamp <= toTime
         && (tag === null || (event.tag || UNTAGGED_KEY) === tag);
     })
-    .slice(0, MAX_RETURNED_EVENTS);
+    .slice(0, limit);
+}
+
+async function decorateVisits(visits: TrafficEvent[], retainedVisits: TrafficEvent[] = visits) {
+  const patterns = recordedPatterns(retainedVisits);
+  const ids = Array.from(new Set(visits.map((visit) => visit.sessionId).filter((id): id is string => Boolean(id))));
+  const sessions = new Map<string, Session>();
+  for (let index = 0; index < ids.length; index += 100) {
+    const chunk = ids.slice(index, index + 100);
+    const raw = await redis.mget<string | Session>(...chunk.map(sessionKey));
+    raw.forEach((value, offset) => {
+      if (!value) return;
+      try { sessions.set(chunk[offset], (typeof value === 'string' ? JSON.parse(value) : value) as Session); } catch { /* Expired. */ }
+    });
+  }
+  return visits.map((visit) => {
+    const session = visit.sessionId ? sessions.get(visit.sessionId) || null : null;
+    const metadataPattern = !session ? patterns.get(visit.id) || null : null;
+    return {
+      ...visit,
+      network: session?.network || visit.network || null,
+      classification: classifySession(session, { userAgentKind: visit.userAgentKind, network: visit.network, rapidRepeat: metadataPattern?.rapidRepeat }),
+      metadataPattern,
+      engagement: session ? {
+        activeMs: session.activeMs,
+        totalMs: Math.max(0, Date.parse(session.lastSeenAt) - Date.parse(session.startedAt)),
+        maxScroll: session.maxScroll, clicks: session.clicks, pages: session.pages,
+        ended: Boolean(session.endedAt),
+      } : null,
+    };
+  });
+}
+
+function resumeStats(visits: Awaited<ReturnType<typeof decorateVisits>>) {
+  const resume = visits.filter((visit) => visit.tag === 'resume');
+  return {
+    coverage: 'Latest 2,000 retained visits only; session details may have expired.', total: resume.length,
+    likelyHuman: resume.filter((visit) => visit.classification.classification === 'Likely human').length,
+    likelyAutomated: resume.filter((visit) => visit.classification.classification === 'Likely automated').length,
+    uncertain: resume.filter((visit) => visit.classification.classification === 'Uncertain').length,
+    meaningfulEngagement: resume.filter((visit) => visit.engagement && (visit.engagement.activeMs >= 15000 || visit.engagement.clicks > 0 || visit.engagement.maxScroll >= 50 || visit.engagement.pages.length >= 2)).length,
+    hosting: resume.filter((visit) => visit.network?.kind === 'hosting').length,
+    projectNavigation: resume.filter((visit) => visit.engagement?.pages.some((path) => /^\/projects?\//.test(path)) || false).length,
+    metadataOnly: resume.filter((visit) => !visit.engagement).length,
+    rapidRepeat: resume.filter((visit) => !visit.engagement && visit.metadataPattern?.rapidRepeat).length,
+  };
 }
 
 const normalizeCounts = (counts: Counts, dimension = '') =>
@@ -171,9 +221,39 @@ export default async function handler(req: Request) {
       if (suppliedTag !== null && !tag) {
         return Response.json({ error: 'Use a valid event tag.' }, { status: 400 });
       }
+      const classification = url.searchParams.get('classification');
+      if (classification && !['human', 'automated', 'uncertain'].includes(classification)) return Response.json({ error: 'Invalid classification' }, { status: 400 });
+      const pattern = url.searchParams.get('pattern');
+      if (pattern && !['rapid-repeat', 'metadata-only'].includes(pattern)) return Response.json({ error: 'Invalid pattern' }, { status: 400 });
+      const location = url.searchParams.get('location')?.trim().toLowerCase() || '';
+      const source = url.searchParams.get('source')?.trim().toLowerCase() || '';
+      if (location.length > 100 || source.length > 100) return Response.json({ error: 'Filter too long' }, { status: 400 });
       const key = kind === 'visits' ? `${VISITS_PREFIX}:events` : EVENT_KEY;
-      const events = await loadRecentEvents(key, from, to, tag);
+      const events = await loadRecentEvents(key, from, to, tag, kind === 'visits' ? MAX_EVENT_SCAN : MAX_RETURNED_EVENTS);
+      if (kind === 'visits') {
+        const rawRetained = await redis.lrange<unknown>(`${VISITS_PREFIX}:events`, 0, MAX_EVENT_SCAN - 1);
+        const retained = (rawRetained || []).map(parseEvent).filter((event): event is TrafficEvent => Boolean(event));
+        const decorated = await decorateVisits(events, retained);
+        const filtered = decorated.filter((event) => {
+          const place = [event.city, event.region, event.country].join(' ').toLowerCase();
+          const label = event.classification.classification;
+          return (!classification || (classification === 'human' ? label === 'Likely human' : classification === 'automated' ? label === 'Likely automated' : label === 'Uncertain'))
+            && (!location || place.includes(location)) && (!source || event.source?.toLowerCase().includes(source))
+            && (!pattern || (pattern === 'rapid-repeat' ? !event.engagement && event.metadataPattern?.rapidRepeat : !event.engagement));
+        });
+        return Response.json({ events: filtered.slice(0, MAX_RETURNED_EVENTS), matchingCount: filtered.length }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+      }
       return Response.json({ events }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
+    }
+
+    if (url.searchParams.has('session')) {
+      const id = url.searchParams.get('session') || '';
+      if (!/^[a-f0-9-]{36}$/.test(id)) return Response.json({ error: 'Invalid session ID' }, { status: 400 });
+      const raw = await redis.get<string | Session>(sessionKey(id));
+      if (!raw) return Response.json({ error: 'Session not retained' }, { status: 404 });
+      const session = (typeof raw === 'string' ? JSON.parse(raw) : raw) as Session;
+      const { token: _token, ...safeSession } = session;
+      return Response.json({ session: safeSession, classification: classifySession(session) }, { headers: { 'Cache-Control': 'private, no-store, max-age=0' } });
     }
 
     const dayKeys = (await redis.hkeys(`${ANALYTICS_PREFIX}:days`)) || [];
@@ -213,11 +293,22 @@ export default async function handler(req: Request) {
       };
     }
 
-    const [recentEvents, recentVisitEvents, taggedTraffic] = await Promise.all([
+    const [recentEvents, rawRecentVisits, taggedTraffic, rawRetainedVisits] = await Promise.all([
       loadRecentEvents(EVENT_KEY, from, to),
       loadRecentEvents(`${VISITS_PREFIX}:events`, from, to),
       loadTaggedTraffic(range),
+      redis.lrange<unknown>(`${VISITS_PREFIX}:events`, 0, MAX_EVENT_SCAN - 1),
     ]);
+    const retainedVisits = (rawRetainedVisits || []).map(parseEvent).filter((event): event is TrafficEvent => Boolean(event));
+    const recentVisitEvents = await decorateVisits(rawRecentVisits, retainedVisits);
+    const fromTime = from?.getTime() ?? Number.NEGATIVE_INFINITY;
+    const toTime = to ? to.getTime() + 86400000 - 1 : Number.POSITIVE_INFINITY;
+    const resumeRecords = retainedVisits.filter((event): event is TrafficEvent => {
+      if (!event || event.tag !== 'resume') return false;
+      const time = Date.parse(event.timestamp);
+      return Number.isFinite(time) && time >= fromTime && time <= toTime;
+    });
+    const resumeVisits = await decorateVisits(resumeRecords, retainedVisits);
 
     return Response.json(
       {
@@ -230,6 +321,7 @@ export default async function handler(req: Request) {
         recentEvents,
         recentVisitEvents,
         taggedTraffic,
+        resumeStats: resumeStats(resumeVisits),
         ...result.dimensions,
       },
       { headers: { 'Cache-Control': 'private, no-store, max-age=0', 'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'" } },

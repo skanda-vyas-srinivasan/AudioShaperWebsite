@@ -35,7 +35,14 @@ type TrafficEvent = {
   source: string;
   version?: string;
   tag?: string | null;
+  os?: string;
+  sessionId?: string;
+  network?: { asn: string | null; organization: string | null; provider: string | null; kind: string; cloud: string | null; vpnProxy: string } | null;
+  classification?: { classification: string; score: number; signals: { level: string; description: string }[]; limitation: string; evidenceBasis: 'session' | 'metadata-only' };
+  engagement?: { activeMs: number; totalMs: number; maxScroll: number; clicks: number; pages: string[]; ended: boolean } | null;
+  metadataPattern?: { basis: 'retained-visit-metadata'; nearbyCount: number; rapidRepeat: boolean; nearbyVisits: { id: string; timestamp: string; tag: string | null }[] } | null;
 };
+type ResumeStats = { coverage: string; total: number; likelyHuman: number; likelyAutomated: number; uncertain: number; meaningfulEngagement: number; hosting: number; projectNavigation: number; metadataOnly: number; rapidRepeat: number };
 type Analytics = {
   totalDownloads: number;
   filteredTotal: number;
@@ -56,6 +63,7 @@ type Analytics = {
   recentEvents: TrafficEvent[];
   recentVisitEvents?: TrafficEvent[];
   taggedTraffic?: { tag: string; visits: number; downloads: number }[];
+  resumeStats?: ResumeStats;
 };
 
 const SESSION_KEY = 'sonexis-analytics-token';
@@ -71,6 +79,7 @@ const SECTIONS = [
   { id: 'trends', label: 'Trends', icon: TrendingUp },
   { id: 'tagged-traffic', label: 'Traffic sources', icon: Compass },
   { id: 'recent-visits', label: 'Recent visits', icon: Users },
+  { id: 'resume-traffic', label: 'Resume traffic', icon: Compass },
   { id: 'recent-downloads', label: 'Recent downloads', icon: Clock3 },
   { id: 'locations', label: 'Locations', icon: MapPin },
   { id: 'devices-versions', label: 'Devices & versions', icon: Laptop },
@@ -580,6 +589,92 @@ function EventLog({ events, kind, token, from, to }: {
   );
 }
 
+const duration = (ms: number | undefined) => ms === undefined ? 'Not recorded' : `${Math.round(ms / 1000)}s`;
+
+function VisitEngagement({ token, from, to, resumeOnly = false, summary, tags = [] }: {
+  token: string; from: string; to: string; resumeOnly?: boolean; summary?: ResumeStats; tags?: string[];
+}) {
+  const [tag, setTag] = useState(resumeOnly ? 'resume' : '*');
+  const [classification, setClassification] = useState('*');
+  const [pattern, setPattern] = useState('*');
+  const [location, setLocation] = useState('');
+  const [source, setSource] = useState('');
+  const [visits, setVisits] = useState<TrafficEvent[]>([]);
+  const [matchingCount, setMatchingCount] = useState(0);
+  const [selected, setSelected] = useState<TrafficEvent | null>(null);
+  const [detail, setDetail] = useState<{ session: { events: { type: string; timestamp: string; path?: string; category?: string; target?: string; depth?: number }[]; startedAt: string; endedAt: string | null } } | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({ events: 'visits' });
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    if (tag !== '*') params.set('tag', tag);
+    if (classification !== '*') params.set('classification', classification);
+    if (pattern !== '*') params.set('pattern', pattern);
+    if (location.trim()) params.set('location', location.trim());
+    if (source.trim()) params.set('source', source.trim());
+    void fetch(`/api/analytics?${params}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      .then(async (response) => { if (!response.ok) throw new Error('Visits could not be loaded.'); return response.json(); })
+      .then((data) => { if (!cancelled) { setVisits(data.events || []); setMatchingCount(data.matchingCount || 0); setError(''); } })
+      .catch(() => { if (!cancelled) setError('Visits could not be loaded.'); });
+    return () => { cancelled = true; };
+  }, [token, from, to, tag, classification, pattern, location, source]);
+  useEffect(() => {
+    if (!selected?.sessionId) { setDetail(null); return; }
+    let cancelled = false;
+    void fetch(`/api/analytics?session=${selected.sessionId}`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      .then(async (response) => { if (!response.ok) throw new Error('Session detail expired.'); return response.json(); })
+      .then((data) => { if (!cancelled) setDetail(data); })
+      .catch(() => { if (!cancelled) setDetail(null); });
+    return () => { cancelled = true; };
+  }, [selected, token]);
+
+  return <div className="space-y-5">
+    {summary && <div className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ['Retained resume visits', summary.total], ['Likely human', summary.likelyHuman], ['Likely automated', summary.likelyAutomated], ['Uncertain', summary.uncertain],
+          ['Meaningful engagement', summary.meaningfulEngagement], ['Hosting provider', summary.hosting], ['Project navigation', summary.projectNavigation],
+          ['Metadata-only visits', summary.metadataOnly], ['Visits with rapid repeats', summary.rapidRepeat],
+        ].map(([label, count]) => <div key={label} className="rounded-xl border border-[#242435] bg-[#030307] p-3"><div className="text-xs text-[#747789]">{label}</div><div className="mt-1 text-xl font-semibold text-white">{count}</div></div>)}
+      </div>
+      <p className="mt-3 text-xs text-[#747789]">{summary.coverage} Project navigation counts paths under /project/ or /projects/; this site currently has no individual project routes.</p>
+    </div>}
+    <div className="rounded-2xl border border-[#242435] bg-[#080811]/90 p-5 md:p-6">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {!resumeOnly && <select aria-label="Source tag" value={tag} onChange={(event) => setTag(event.target.value)} className="rounded-lg border border-[#343449] bg-[#030307] px-3 py-2 text-sm text-white"><option value="*">All tags</option>{Array.from(new Set(['resume', UNTAGGED_KEY, ...tags])).map((item) => <option key={item} value={item}>{item === UNTAGGED_KEY ? 'Untagged' : item}</option>)}</select>}
+        <select aria-label="Classification" value={classification} onChange={(event) => setClassification(event.target.value)} className="rounded-lg border border-[#343449] bg-[#030307] px-3 py-2 text-sm text-white"><option value="*">All classifications</option><option value="human">Likely human</option><option value="automated">Likely automated</option><option value="uncertain">Uncertain</option></select>
+        <select aria-label="Recorded pattern" value={pattern} onChange={(event) => setPattern(event.target.value)} className="rounded-lg border border-[#343449] bg-[#030307] px-3 py-2 text-sm text-white"><option value="*">All patterns</option><option value="metadata-only">Metadata only</option><option value="rapid-repeat">Rapid repeat</option></select>
+        <input aria-label="Filter location" placeholder="Location" value={location} onChange={(event) => setLocation(event.target.value)} className="rounded-lg border border-[#343449] bg-[#030307] px-3 py-2 text-sm text-white" />
+        <input aria-label="Filter referring source" placeholder="Referring source" value={source} onChange={(event) => setSource(event.target.value)} className="rounded-lg border border-[#343449] bg-[#030307] px-3 py-2 text-sm text-white" />
+      </div>
+      <p className="mb-3 text-xs text-[#747789]">{matchingCount} matching retained visits · showing up to 250. Select a row for its event timeline.</p>
+      {error ? <p role="alert" className="text-[#FF9AC5]">{error}</p> : visits.length === 0 ? <p className="py-8 text-center text-sm text-[#747789]">No visits match these filters.</p> : <div className="table-responsive max-h-[560px] overflow-auto"><table className="min-w-[1640px] w-full text-sm"><thead className="sticky top-0 bg-[#080811]"><tr>{['Time / visitor', 'Location', 'Device / browser / OS', 'Source / tag', 'Active / total', 'Scroll / clicks', 'Pages', 'Network / ASN', 'Recorded pattern', 'Classification'].map((label) => <th key={label} className="border-b border-[#242435] px-3 pb-3 text-left font-medium text-[#747789]">{label}</th>)}</tr></thead><tbody>{visits.map((visit) => <tr key={visit.id} onClick={() => setSelected(visit)} className="cursor-pointer border-t border-[#191925] align-top hover:bg-[#10101d]">
+        <td className="px-3 py-3"><div className="whitespace-nowrap">{new Date(visit.timestamp).toLocaleString()}</div><div className="font-mono text-[#A778FF]">{visit.visitorId ? `#${visit.visitorId}` : 'Unavailable'}</div></td>
+        <td className="px-3 py-3">{[visit.city, visit.region, visit.country].filter((part) => part && part !== 'Unknown').join(', ') || 'Unknown'}</td>
+        <td className="px-3 py-3">{visit.device || 'Unknown'} / {visit.browser || 'Unknown'} / {visit.os || 'Not recorded'}</td>
+        <td className="px-3 py-3">{visit.source || 'Unknown'}<div className="font-mono text-[#20F4FF]">{visit.tag || 'Untagged'}</div></td>
+        <td className="px-3 py-3">{duration(visit.engagement?.activeMs)} / {duration(visit.engagement?.totalMs)}</td>
+        <td className="px-3 py-3">{visit.engagement ? `${visit.engagement.maxScroll}% / ${visit.engagement.clicks}` : 'Not recorded'}</td>
+        <td className="px-3 py-3">{visit.engagement?.pages.join(', ') || 'Not recorded'}</td>
+        <td className="px-3 py-3">{visit.network?.kind || 'Not recorded'}<div className="text-xs text-[#747789]">{[visit.network?.asn, visit.network?.organization].filter(Boolean).join(' · ') || 'ASN unavailable'}</div></td>
+        <td className="px-3 py-3">{visit.metadataPattern ? visit.metadataPattern.nearbyCount > 1 ? `${visit.metadataPattern.nearbyCount} recorded visits within ±30s` : 'No nearby repeat' : 'Not available'}{visit.metadataPattern?.rapidRepeat && <div className="text-xs text-[#FFB454]">Rapid repeat</div>}</td>
+        <td className="px-3 py-3">{visit.classification?.classification || 'Uncertain'}<div className="text-xs text-[#747789]">{visit.classification?.evidenceBasis === 'metadata-only' ? 'Metadata only · ' : ''}{visit.classification?.signals.map((signal) => signal.description).join('; ') || 'Insufficient data'}</div></td>
+      </tr>)}</tbody></table></div>}
+      <p className="mt-4 text-xs leading-5 text-[#747789]">Active time and interactions are browser reported and may be blocked or simulated. Historical timing patterns compare actual retained visits with the same shortened visitor ID; they do not prove one person, one session, or automation. A lack of clicks or scrolling alone is never treated as bot evidence.</p>
+    </div>
+    {selected && <div role="dialog" aria-label="Session detail" className="rounded-2xl border border-[#343449] bg-[#080811] p-5 md:p-6">
+      <div className="flex items-start justify-between gap-3"><h3 className="text-lg font-semibold text-white">Visitor {selected.visitorId ? `#${selected.visitorId}` : 'unavailable'}</h3><button onClick={() => setSelected(null)} className="text-sm text-[#20F4FF]">Close</button></div>
+      <p className="mt-2 text-sm text-[#C5C8D8]">{selected.classification?.classification || 'Uncertain'} · {selected.classification?.evidenceBasis === 'metadata-only' ? 'Metadata only' : 'Session evidence'} · score {selected.classification?.score ?? 0} · {selected.classification?.limitation}</p>
+      <p className="mt-2 text-xs text-[#747789]">{selected.classification?.signals.map((signal) => `${signal.level}: ${signal.description}`).join(' · ') || 'Insufficient data'}</p>
+      <p className="mt-3 text-sm text-[#C5C8D8]">Active: {duration(selected.engagement?.activeMs)} · Total observed: {duration(selected.engagement?.totalMs)} · Scroll: {selected.engagement ? `${selected.engagement.maxScroll}%` : 'Not recorded'} · Clicks: {selected.engagement?.clicks ?? 'Not recorded'} · Pages: {selected.engagement?.pages.join(', ') || 'Not recorded'}</p>
+      <h4 className="mt-5 text-sm font-semibold text-white">{selected.sessionId ? 'Timeline' : 'Recorded visit timestamps'}</h4>
+      {!selected.sessionId ? <div className="mt-2 text-sm text-[#747789]"><p>Session events were not recorded for this visit.</p>{selected.metadataPattern && <div className="mt-4"><h5 className="font-medium text-[#C5C8D8]">Retained visits with this shortened ID, including this visit</h5><p className="mt-1 text-xs">These are separate recorded page loads, not a reconstructed session.</p><ol className="mt-2 space-y-1">{selected.metadataPattern.nearbyVisits.map((visit) => <li key={visit.id}>{new Date(visit.timestamp).toLocaleString()} · {visit.tag || 'Untagged'} · visit #{visit.id.slice(0, 8)}</li>)}</ol></div>}</div> : !detail ? <p className="mt-2 text-sm text-[#747789]">Loading or no longer retained.</p> : <ol className="mt-3 space-y-2">{detail.session.events.map((event, index) => <li key={`${event.timestamp}-${index}`} className="flex gap-3 border-l border-[#343449] pl-3 text-sm text-[#C5C8D8]"><time className="font-mono text-[#747789]">{new Date(event.timestamp).toLocaleTimeString()}</time><span>{event.type === 'page' ? `Page loaded: ${event.path}` : event.type === 'scroll' ? `Scrolled to ${event.depth}%` : event.type === 'click' ? `Clicked ${event.category}: ${event.target}` : 'Session ended'}</span></li>)}</ol>}
+    </div>}
+  </div>;
+}
+
 function SectionHeading({ icon: Icon, title, subtitle }: { icon: React.ElementType; title: string; subtitle: string }) {
   return (
     <div className="mb-5 flex items-center gap-3">
@@ -901,9 +996,14 @@ function Dashboard({ token, onLock }: { token: string; onLock: () => void }) {
           </section>
 
           <section id="recent-visits" className="scroll-mt-8 mb-12">
-            <SectionHeading icon={Users} title="Recent visits" subtitle="Individual website visits, with tags such as resume and untagged traffic." />
-            <EventLog events={analytics.recentVisitEvents || []} kind="visit" token={token} from={loadedRange.from} to={loadedRange.to} />
-            <p className="mt-3 text-xs text-[#747789]">Visit events are available from when visit logging was enabled. Earlier aggregate totals cannot be turned into individual events.</p>
+            <SectionHeading icon={Users} title="Recent visits" subtitle="Retained visits with engagement, network signals, and session timelines." />
+            <VisitEngagement token={token} from={loadedRange.from} to={loadedRange.to} tags={analytics.taggedTraffic?.map((item) => item.tag)} />
+            <p className="mt-3 text-xs text-[#747789]">Historical visits retain their original metadata. Missing engagement is shown as Not recorded.</p>
+          </section>
+
+          <section id="resume-traffic" className="scroll-mt-8 mb-12">
+            <SectionHeading icon={Compass} title="Resume traffic" subtitle="Explore visits attributed to resume links and distinguish engagement from scanner signals." />
+            <VisitEngagement token={token} from={loadedRange.from} to={loadedRange.to} resumeOnly summary={analytics.resumeStats} />
           </section>
 
           <section id="recent-downloads" className="scroll-mt-8 mb-12">
